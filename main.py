@@ -3,6 +3,7 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 
 import vtk_processor as vtk_proc
+import dock_frame
 
 
 class MainWindow(QtGui.QMainWindow):
@@ -17,6 +18,8 @@ class MainWindow(QtGui.QMainWindow):
         self.dock_bottom = None
         self.vtk_processor = vtk_proc.Vtk_processor()
         self.actor_dict = {}
+        self.progress_bar = None
+        self.log_widet = None
         # do the real work
         self.setup_ui()
         # lower-left corner
@@ -32,15 +35,17 @@ class MainWindow(QtGui.QMainWindow):
         dock2.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea |
                               QtCore.Qt.RightDockWidgetArea |
                               QtCore.Qt.BottomDockWidgetArea)
-        te1 = QtGui.QTextEdit(self.tr("ting1"))
+        te1 = dock_frame.CommandlineWidget(self.tr("cycas-GUI start..."))
         dock2.setWidget(te1)
+        self.log_widet = te1
         self.dock_bottom = dock2
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock2)
 
         dock1 = QtGui.QDockWidget(self.tr("ting1"), self)
         dock1.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
         dock1.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        te1 = QtGui.QTextEdit(self.tr("ting1"))
+        #te1 = QtGui.QTextEdit(self.tr("ting1"))
+        te1 = dock_frame.LeftDockFrame()
         dock1.setWidget(te1)
         self.dock_left = dock1
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock1)
@@ -53,9 +58,17 @@ class MainWindow(QtGui.QMainWindow):
         exit_action = self.new_action('Exit', 'triggered()', QtCore.SLOT('close()'),
                                       icon='icons/exit.png', short_cut='Ctrl+Q', tip='Exit app')
         import_mesh_action = self.new_action('Load Mesh', 'triggered()', self.import_mesh,
-                                      icon='icons/exit.png', short_cut='Ctrl+E', tip='Import CGNS Mesh')
+                                             icon='icons/exit.png', short_cut='Ctrl+E', tip='Import CGNS Mesh')
+
+        # status bar and progress bar
+        statbar = self.statusBar()
+        pbar = QtGui.QProgressBar(statbar)
+        pbar.setValue(0)
+        pbar.hide()
+        statbar.addPermanentWidget(pbar)
+        self.progress_bar = pbar
+
         # add menu bar
-        self.statusBar()
         menubar = self.menuBar()
         file_menu = menubar.addMenu('&File')
         file_menu.addAction(exit_action)
@@ -71,7 +84,7 @@ class MainWindow(QtGui.QMainWindow):
         if kwargs.get('short_cut') is not None:
             action.setShortcut(kwargs['short_cut'])
         if kwargs.get('tip') is not None:
-            action.setShortcut(kwargs['tip'])
+            action.setStatusTip(kwargs['tip'])
         self.connect(action, QtCore.SIGNAL(signal), slot_func)
         self.actor_dict[title] = action
         return action
@@ -80,6 +93,7 @@ class MainWindow(QtGui.QMainWindow):
     def show(self):
         super(MainWindow, self).show()
         self.vtk_processor.vtk_iren.Initialize()
+
     # override
     def closeEvent(self, event):
         reply = QtGui.QMessageBox.question(self, 'Message',
@@ -88,16 +102,18 @@ class MainWindow(QtGui.QMainWindow):
             event.accept()
         else:
             event.ignore()
+
     # place self in center
     def place_in_center(self):
         screen = QtGui.QDesktopWidget().screenGeometry()
         size = self.geometry()
         self.move((screen.width() - size.width()) / 2, (screen.height() - size.height()) / 2)
+
     # action call backs
     def import_mesh(self):
-        filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh',
-                    '/home')
-        self.vtk_processor.load_cgns_file(filename)
+        filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
+        self.repaint()
+        self.vtk_processor.load_cgns_file(filename, self)
 
 app = QtGui.QApplication(sys.argv)
 main = MainWindow()

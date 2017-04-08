@@ -37,6 +37,12 @@ class Vtk_processor(object):
         actor.SetMapper(self.mapper)
         vtk_ren.AddActor(actor)
         vtk_frame.setLayout(vtk_boxlayout)
+        # Create Axes actor
+        axesActor = vtk.vtkAxesActor()
+        axes_transform = vtk.vtkTransform()
+        axes_transform.Translate(-5., -5., -5.)
+        axesActor.SetUserTransform(axes_transform)
+        vtk_ren.AddActor(axesActor)
 
         # add to properties
         self.vtk_ren = vtk_ren
@@ -50,23 +56,34 @@ class Vtk_processor(object):
         vtk_ren.ResetCamera()
         return vtk_frame
 
-    def load_cgns_file(self, filename):
+    # consider move this funciton to backgound thread. to optimize the main window performance
+    def load_cgns_file(self, filename, main_window):
+        log_widget = main_window.log_widet
+        log_widget.log('loading mesh %s' % filename)
         import cgns_reader
+
         cgns_reader.init()
         cgns_reader.read_file('moxing1.cgns')
+        log_widget.log('number of vertices: %d \n number of parts: %d \n number of elements: %d'
+                       % (cgns_reader.nvert, cgns_reader.nsection, cgns_reader.nelement))
+        log_widget.log('found parts: %s\n' % str(cgns_reader.get_parts()))
         self.ug = vtk.vtkUnstructuredGrid()
         self.ug.SetPoints(cgns_reader.points)
 
-        progressDialog = QtGui.QProgressDialog(self.vtk_frame)
-        progressDialog.setWindowModality(QtCore.Qt.WindowModal)
-        progressDialog.setMinimumDuration(5)
-        progressDialog.setWindowTitle(self.vtk_frame.tr("Please wait"))
-        progressDialog.setLabelText(self.vtk_frame.tr("loading mesh"))
-        progressDialog.setRange(0, cgns_reader.get_cell_num_at_part('BODY') - 1)
+        pbar = main_window.progress_bar
+        sbar = main_window.statusBar()
 
+        sbar.showMessage('loading mesh... please wait')
+        pbar.setRange(0, cgns_reader.get_cell_num_at_part('BODY') - 1)
+        pbar.show()
         for istep, cell in enumerate(cgns_reader.get_cell_at_part('BODY')):
-            progressDialog.setValue(istep)
+            pbar.setValue(istep)
             self.ug.InsertNextCell(cell.GetCellType(), cell.GetPointIds())
         self.mapper.SetInputData(self.ug)
         self.vtk_ren.ResetCamera()
+        pbar.hide()
+        sbar.clearMessage()
         cgns_reader.deinit()
+
+        log_widget.log('done reading mesh')
+

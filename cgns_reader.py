@@ -109,7 +109,6 @@ def read_file(filename):
     for i in xrange(0, nvert):
         points.InsertNextPoint(xcord[i], ycord[i], zcord[i])
 
-
 def get_parts():
     return part_offset_dict.keys()
 
