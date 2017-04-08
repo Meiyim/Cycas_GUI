@@ -16,10 +16,10 @@ class MainWindow(QtGui.QMainWindow):
         # insert properties
         self.dock_left = None
         self.dock_bottom = None
-        self.vtk_processor = vtk_proc.Vtk_processor()
+        self.vtk_processor = vtk_proc.VtkProcessor(self)
         self.actor_dict = {}
         self.progress_bar = None
-        self.log_widet = None
+        self.log_widget = None
         # do the real work
         self.setup_ui()
         # lower-left corner
@@ -37,7 +37,7 @@ class MainWindow(QtGui.QMainWindow):
                               QtCore.Qt.BottomDockWidgetArea)
         te1 = dock_frame.CommandlineWidget(self.tr("cycas-GUI start..."))
         dock2.setWidget(te1)
-        self.log_widet = te1
+        self.log_widget = te1
         self.dock_bottom = dock2
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock2)
 
@@ -102,6 +102,22 @@ class MainWindow(QtGui.QMainWindow):
             event.accept()
         else:
             event.ignore()
+    #slot func
+    @QtCore.pyqtSlot(str)
+    def update_status_bar_slot(self, content):
+        self.statusBar().showMessage(content)
+
+    @QtCore.pyqtSlot(str)
+    def log_slot(self, content):
+        self.log_widget.log(content)
+
+    @QtCore.pyqtSlot(int)
+    def udpate_progress_bar_slot(self, istep):
+        if istep == 0 or istep == 99:
+            self.progress_bar.hide()
+        else:
+            self.progress_bar.show()
+        self.progress_bar.setValue(istep)
 
     # place self in center
     def place_in_center(self):
@@ -113,7 +129,9 @@ class MainWindow(QtGui.QMainWindow):
     def import_mesh(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
         self.repaint()
-        self.vtk_processor.load_cgns_file(filename, self)
+        self.log_widget.log('loading mesh %s' % filename)
+        task = vtk_proc.LoadCgnsTask(self.vtk_processor, self)
+        QtCore.QThreadPool.globalInstance().start(task)
 
 app = QtGui.QApplication(sys.argv)
 main = MainWindow()

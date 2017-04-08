@@ -3,8 +3,9 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-class Vtk_processor(object):
-    def __init__(self):
+class VtkProcessor(QtCore.QObject):
+    def __init__(self, main_window):
+        super(VtkProcessor, self).__init__()
         self.vtk_frame = None
         self.vtk_boxlayout = None
         self.vtk_widget = None
@@ -12,6 +13,13 @@ class Vtk_processor(object):
         self.vtk_iren = None
         self.mapper = None
         self.ug = None
+        #register signal
+        self.report_istep_signal = QtCore.pyqtSignal(int)
+        self.update_status_signal = QtCore.pyqtSignal(str)
+        self.log_signal = QtCore.pyqtSignal(str)
+        self.connect(self, QtCore.SIGNAL('report_istep_signal(int)'), main_window.udpate_progress_bar_slot)
+        self.connect(self, QtCore.SIGNAL('update_status_signal(QString)'), main_window.update_status_bar_slot)
+        self.connect(self, QtCore.SIGNAL('log_signal(QString)'), main_window.log_slot)
 
     def load_vtk_frame(self):
         # vtk
@@ -56,34 +64,33 @@ class Vtk_processor(object):
         vtk_ren.ResetCamera()
         return vtk_frame
 
-    # consider move this funciton to backgound thread. to optimize the main window performance
-    def load_cgns_file(self, filename, main_window):
-        log_widget = main_window.log_widet
-        log_widget.log('loading mesh %s' % filename)
-        import cgns_reader
 
+class LoadCgnsTask(QtCore.QRunnable):
+    def __init__(self, vtkproc, main_window):
+        super(LoadCgnsTask, self).__init__()
+        self.vtk_processor = vtkproc
+
+    def run(self):
+        import cgns_reader
         cgns_reader.init()
         cgns_reader.read_file('moxing1.cgns')
-        log_widget.log('number of vertices: %d \n number of parts: %d \n number of elements: %d'
-                       % (cgns_reader.nvert, cgns_reader.nsection, cgns_reader.nelement))
-        log_widget.log('found parts: %s\n' % str(cgns_reader.get_parts()))
-        self.ug = vtk.vtkUnstructuredGrid()
-        self.ug.SetPoints(cgns_reader.points)
+        self.vtk_processor.emit(QtCore.SIGNAL('log_signal(QString)'), 'number of vertices: %d \n number of parts: %d \n number of elements: %d'
+                           % (cgns_reader.nvert, cgns_reader.nsection, cgns_reader.nelement))
+        self.vtk_processor.emit(QtCore.SIGNAL('log_signal(QString)'), 'found parts: %s\n' % str(cgns_reader.get_parts()))
+        self.vtk_processor.ug = vtk.vtkUnstructuredGrid()
+        self.vtk_processor.ug.SetPoints(cgns_reader.points)
 
-        pbar = main_window.progress_bar
-        sbar = main_window.statusBar()
-
-        sbar.showMessage('loading mesh... please wait')
-        pbar.setRange(0, cgns_reader.get_cell_num_at_part('BODY') - 1)
-        pbar.show()
+        self.vtk_processor.emit(QtCore.SIGNAL('update_status_signal(QString)'), 'loading mesh... please wait')
+        nelem =  cgns_reader.get_cell_num_at_part('BODY')
+        #pbar.show()
         for istep, cell in enumerate(cgns_reader.get_cell_at_part('BODY')):
-            pbar.setValue(istep)
-            self.ug.InsertNextCell(cell.GetCellType(), cell.GetPointIds())
-        self.mapper.SetInputData(self.ug)
-        self.vtk_ren.ResetCamera()
-        pbar.hide()
-        sbar.clearMessage()
+            self.vtk_processor.emit(QtCore.SIGNAL('report_istep_signal(int)'), int(istep* 100./nelem) )
+            self.vtk_processor.ug.InsertNextCell(cell.GetCellType(), cell.GetPointIds())
+        self.vtk_processor.mapper.SetInputData(self.vtk_processor.ug)
+        self.vtk_processor.vtk_ren.ResetCamera()
+        #pbar.hide()
+        #sbar.clearMessage()
+        self.vtk_processor.emit(QtCore.SIGNAL('update_status_signal(QString)'), 'done')
         cgns_reader.deinit()
 
-        log_widget.log('done reading mesh')
 
