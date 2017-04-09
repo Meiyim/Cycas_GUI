@@ -1,9 +1,27 @@
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
-class LeftDockFrame(QtGui.QFrame):
+class LeftDockFrame(QtGui.QTreeWidget):
     def __init__(self):
         super(LeftDockFrame, self).__init__()
+        self.setColumnCount(2)
+        self.setHeaderLabels(['part', 'nelement / nvertex'])
+        it1 = QtGui.QTreeWidgetItem(self)
+        it1.setText(0, 'root')
+        #it1.setCheckState(QtGui.QTreeWidgetItem.Checked)
+        it2 = QtGui.QTreeWidgetItem(self)
+        it2.setText(0, 'root2')
+        for i in xrange(0, 3):
+            child = QtGui.QTreeWidgetItem(it1)
+            child.setText(0, 'child%d' % i)
+            child.setText(1, 'conf%d' % i)
+        self.addTopLevelItem(it1)
+        self.addTopLevelItem(it2)
+
+
+class LeftDockFrame___(QtGui.QFrame):
+    def __init__(self):
+        super(LeftDockFrame___, self).__init__()
         vbox = QtGui.QVBoxLayout()
         vbox.addLayout(self.line_factory())
         vbox.addLayout(self.line_factory())
