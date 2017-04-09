@@ -14,9 +14,28 @@ class LeftDockFrame(QtGui.QFrame):
     def line_factory(self):
         ret = QtGui.QHBoxLayout()
         content = QtGui.QLabel('hello world')
-        content.setFixedSize(100, 30)
+        content.setFixedSize(200, 30)
         ret.addWidget(content)
         return ret
+
+
+class LeftDockFrame2(QtGui.QFrame):
+    def __init__(self):
+        super(LeftDockFrame2, self).__init__()
+        vbox = QtGui.QVBoxLayout()
+        vbox.addLayout(self.line_factory())
+        vbox.addLayout(self.line_factory())
+        vbox.addLayout(self.line_factory())
+        vbox.addStretch(100)
+        self.setLayout(vbox)
+
+    def line_factory(self):
+        ret = QtGui.QHBoxLayout()
+        content = QtGui.QLabel('ouput configure...')
+        content.setFixedSize(200, 30)
+        ret.addWidget(content)
+        return ret
+
 
 class CommandlineWidget(QtGui.QTextEdit):
     def __init__(self, content):

@@ -18,6 +18,7 @@ class MainWindow(QtGui.QMainWindow):
         self.dock_bottom = None
         self.vtk_processor = vtk_proc.VtkProcessor(self)
         self.actor_dict = {}
+        self.left_dock_panels = {}
         self.progress_bar = None
         self.log_widget = None
         # do the real work
@@ -29,6 +30,10 @@ class MainWindow(QtGui.QMainWindow):
 
     def setup_ui(self):
         # init main window
+        # init left dock frames
+        self.left_dock_panels['mesh_conf'] = dock_frame.LeftDockFrame()
+        self.left_dock_panels['output_conf'] = dock_frame.LeftDockFrame2()
+
         # init 2 docks
         dock2 = QtGui.QDockWidget(self.tr("ting1"), self)
         dock2.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
@@ -45,21 +50,25 @@ class MainWindow(QtGui.QMainWindow):
         dock1.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
         dock1.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         #te1 = QtGui.QTextEdit(self.tr("ting1"))
-        te1 = dock_frame.LeftDockFrame()
+        te1 = self.left_dock_panels['mesh_conf']
         dock1.setWidget(te1)
         self.dock_left = dock1
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock1)
 
         # add vtk
         vtk_frame = self.vtk_processor.load_vtk_frame()
+        vtk_frame.setMinimumSize(400, 400)
         self.setCentralWidget(vtk_frame)
 
         # actions
         exit_action = self.new_action('Exit', 'triggered()', QtCore.SLOT('close()'),
-                                      icon='icons/exit.png', short_cut='Ctrl+Q', tip='Exit app')
+                                      short_cut='Ctrl+Q', tip='Exit app')
+        show_mesh_panel_action = self.new_action('Mesh', 'triggered()', self.show_mesh_panel,
+                                      icon='icons/exit.png', tip='Show mesh panel')
         import_mesh_action = self.new_action('Load Mesh', 'triggered()', self.import_mesh,
                                              icon='icons/exit.png', short_cut='Ctrl+E', tip='Import CGNS Mesh')
-
+        show_output_panel_action = self.new_action('Output', 'triggered()', self.show_output_panel,
+                                                   icon='icons/output_config.png', tip = 'configure output directory')
         # status bar and progress bar
         statbar = self.statusBar()
         pbar = QtGui.QProgressBar(statbar)
@@ -73,8 +82,11 @@ class MainWindow(QtGui.QMainWindow):
         file_menu = menubar.addMenu('&File')
         file_menu.addAction(exit_action)
         file_menu.addAction(import_mesh_action)
-        toolbar = self.addToolBar('Exit')
-        toolbar.addAction(exit_action)
+
+        toolbar = self.addToolBar('Mesh')
+        toolbar.addAction(show_mesh_panel_action)
+        output_panel_tool_bar = self.addToolBar('Output Conf')
+        output_panel_tool_bar.addAction(show_output_panel_action)
 
     def new_action(self, title, signal, slot_func, **kwargs):
         if kwargs.get('icon') is None:
@@ -128,10 +140,19 @@ class MainWindow(QtGui.QMainWindow):
     # action call backs
     def import_mesh(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
-        self.repaint()
         self.log_widget.log('loading mesh %s' % filename)
         task = vtk_proc.LoadCgnsTask(self.vtk_processor, self)
         QtCore.QThreadPool.globalInstance().start(task)
+
+    def show_output_panel(self):
+        panel = self.left_dock_panels['output_conf']
+        if self.dock_left.widget is not panel:
+            self.dock_left.setWidget(panel)
+
+    def show_mesh_panel(self):
+        panel = self.left_dock_panels['mesh_conf']
+        if self.dock_left.widget is not panel:
+            self.dock_left.setWidget(panel)
 
 app = QtGui.QApplication(sys.argv)
 main = MainWindow()
