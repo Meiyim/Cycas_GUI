@@ -11,16 +11,16 @@ class MainWindow(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
 
         self.resize(1000, 500)
-        self.setWindowTitle('main window')
+        self.setWindowTitle('Cycas-GUI')
 
         # insert properties
         self.dock_left = None
         self.dock_bottom = None
-        self.vtk_processor = vtk_proc.VtkProcessor(self)
         self.actor_dict = {}
         self.left_dock_panels = {}
         self.progress_bar = None
         self.log_widget = None
+        self.vtk_processor = None
         # do the real work
         self.setup_ui()
         # lower-left corner
@@ -35,7 +35,7 @@ class MainWindow(QtGui.QMainWindow):
         self.left_dock_panels['output_conf'] = dock_frame.LeftDockFrame2()
 
         # init 2 docks
-        dock2 = QtGui.QDockWidget(self.tr("ting1"), self)
+        dock2 = QtGui.QDockWidget(self.tr("Command Line"), self)
         dock2.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
         dock2.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea |
                               QtCore.Qt.RightDockWidgetArea |
@@ -46,7 +46,7 @@ class MainWindow(QtGui.QMainWindow):
         self.dock_bottom = dock2
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock2)
 
-        dock1 = QtGui.QDockWidget(self.tr("ting1"), self)
+        dock1 = QtGui.QDockWidget(self.tr("Configuration Panel"), self)
         dock1.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
         dock1.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         #te1 = QtGui.QTextEdit(self.tr("ting1"))
@@ -56,6 +56,7 @@ class MainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock1)
 
         # add vtk
+        self.vtk_processor = vtk_proc.VtkProcessor(self)
         vtk_frame = self.vtk_processor.load_vtk_frame()
         vtk_frame.setMinimumSize(400, 400)
         self.setCentralWidget(vtk_frame)
@@ -141,7 +142,7 @@ class MainWindow(QtGui.QMainWindow):
     def import_mesh(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
         self.log_widget.log('loading mesh %s' % filename)
-        task = vtk_proc.LoadCgnsTask(self.vtk_processor, self)
+        task = vtk_proc.LoadCgnsTask(self.vtk_processor)
         QtCore.QThreadPool.globalInstance().start(task)
 
     def show_output_panel(self):
