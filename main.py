@@ -1,10 +1,17 @@
 import sys
+import logging
+
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
 import vtk_processor as vtk_proc
 import dock_frame
 
+logging.basicConfig(level=logging.DEBUG,
+                format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+                datefmt='%a, %d %b %Y %H:%M:%S',
+                filename='cycas_gui.log',
+                filemode='w')
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self):

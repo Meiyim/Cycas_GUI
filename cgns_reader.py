@@ -129,5 +129,5 @@ if __name__ == '__main__':
     init()
     read_file('moxing1.cgns')
     for cell in get_cell_at_part('BODY'):
-        print cell
+        pass
     deinit()

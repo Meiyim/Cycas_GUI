@@ -7,8 +7,12 @@
 #include<cgnslib.h>
 
 #define ERROR_CHECK(command) do{if(command) {fprintf(stderr, "CGNS error at line %d:%s\n", __LINE__,cg_get_error()); return 1;}} while(0)
-
 #define CGNS_VERBOSE
+#ifdef _MSC_VER
+#define DLL_EXPORT __declspec( dllexport )
+#else
+#define DLL_EXPORT
+#endif
 
 typedef struct Element{
     int type;
@@ -29,6 +33,11 @@ static Element* global_elem_list = NULL;
 static char* global_part_name = NULL;
 static size_t* global_part_offset = NULL;
 static DataType_t cord_datatype;
+
+DLL_EXPORT int read_file(const char*, size_t*, size_t*, size_t*, int*);
+DLL_EXPORT int read_verts(void**, void**, void**);
+DLL_EXPORT int read_element(char**, size_t**, Element**);
+DLL_EXPORT int finalize();
 
 int Gmsh_type(ElementType_t cgns_type, int* gmsh_type){
     switch(cgns_type){
@@ -77,9 +86,9 @@ int read_file(const char* title, size_t* arg_nv, size_t* arg_nsec, size_t* arg_n
 #ifdef CGNS_VERBOSE
     printf("ncoords %u npart %u\n", ncords, nsection);
 #endif
-    if (!strcmp(DataTypeName[cord_datatype], "RealDouble")) {
+    if (!strcmp(cg_DataTypeName(cord_datatype), "RealDouble")) {
         *type_flag = 0; 
-    } else if (!strcmp(DataTypeName[cord_datatype], "RealSingle")) {
+    } else if (!strcmp(cg_DataTypeName(cord_datatype), "RealSingle")) {
         *type_flag = 1;
     } else {
 		*type_flag = -1;
@@ -106,14 +115,16 @@ int read_verts(void** xcord, void** ycord, void** zcord){
     cgsize_t range_min = 1, range_max = nvert;
 
     for (int idim = 1; idim <= ncords; ++idim) {
-        if (!strcmp(DataTypeName[cord_datatype], "RealDouble")) {
+        if (!strcmp(cg_DataTypeName(cord_datatype), "RealDouble")) {
             buffer = malloc(nvert * sizeof(double));
-        } else if (!strcmp(DataTypeName[cord_datatype], "RealSingle")) {
+        } else if (!strcmp(cg_DataTypeName(cord_datatype), "RealSingle")) {
             buffer = malloc(nvert * sizeof(float));
         } else {
 			assert(0);
 		}
 		ERROR_CHECK(cg_coord_info(cgns_file, ibase, izone, idim, &cord_datatype, charbuffer));
+        printf("base%d zone%d cord_type%d range_min%d range_max%d \n name:%s\n",
+                ibase, izone, cord_datatype, range_min, range_max, charbuffer);
         ERROR_CHECK(cg_coord_read(cgns_file, ibase, izone, charbuffer, cord_datatype, &range_min, &range_max, buffer));
         switch(idim){
             case 1: *xcord = buffer; global_xcord = buffer; break; 
@@ -122,7 +133,7 @@ int read_verts(void** xcord, void** ycord, void** zcord){
             default: printf("unknown coordinate %d\n", idim); return 1;
         }
 #ifdef CGNS_VERBOSE
-        printf("%s: type: %s %ld --> %ld \n", charbuffer, DataTypeName[cord_datatype], range_min, range_max);
+        printf("%s: type: %s %ld --> %ld \n", charbuffer, cg_DataTypeName(cord_datatype), range_min, range_max);
 #endif
     }
     return 0;
