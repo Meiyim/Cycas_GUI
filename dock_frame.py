@@ -126,4 +126,4 @@ class CommandlineWidget(QtGui.QTextEdit):
     def log(self, content):
         self.history_log.append(content)
         self.append(content)
-        logging.log(content)
+        logging.debug(content)

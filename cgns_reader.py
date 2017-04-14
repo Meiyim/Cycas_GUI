@@ -128,6 +128,11 @@ def deinit():
 if __name__ == '__main__':
     init()
     read_file('moxing1.cgns')
-    for cell in get_cell_at_part('BODY'):
-        pass
+    for part_name in get_parts():
+        ug = vtk.vtkUnstructuredGrid()
+        ug.SetPoints(points)
+        nelem = get_cell_num_at_part(part_name)
+        for istep, cell in enumerate(get_cell_at_part(part_name)):
+            cell_type = cell.GetCellType()
+            ug.InsertNextCell(cell_type, cell.GetPointIds())
     deinit()
