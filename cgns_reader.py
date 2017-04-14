@@ -16,39 +16,15 @@ class Element(ct.Structure):
 def check(ret):
     if ret != 0: raise CGNSException
 
-
 def set_vert_type(vtype):
     cgns_reader_module.read_verts.argtypes = [vtype, vtype, vtype]
 
-
-def vtk_cell_factory(gmsh_elem):
-    ret = None
-    npe = 0
-    if gmsh_elem.type == 2:
-        ret = vtk.vtkTriangle()
-        npe = 3
-    elif gmsh_elem.type == 3:
-        ret = vtk.vtkQuad()
-        npe = 4
-    elif gmsh_elem.type == 4:
-        ret = vtk.vtkTetra()
-        npe = 4
-    elif gmsh_elem.type == 5:
-        ret = vtk.vtkHexahedron()
-        npe = 8
-    elif gmsh_elem.type == 6: #gmsh-triangle prism
-        ret = vtk.vtkWedge()
-        npe = 6
-    elif gmsh_elem.type == 7:
-        ret = vtk.vtkPyramid()
-        npe = 5
-    else:
-        raise CGNSException('unknown gmsh type %d' % gmsh_elem.type)
-    ids = ret.GetPointIds()
-    for i, index in zip(xrange(0, npe), gmsh_elem.pid[0: npe]):
-        ids.SetId(i, index)
-    return ret
-
+vtk_npe = {vtk.VTK_TETRA:4,
+       vtk.VTK_QUAD:4,
+       vtk.VTK_TRIANGLE:3,
+       vtk.VTK_HEXAHEDRON:8,
+       vtk.VTK_WEDGE:6,
+       vtk.VTK_PYRAMID:5}
 # type alias
 uint_p = ct.POINTER(ct.c_size_t)
 int_p = ct.POINTER(ct.c_int)
@@ -58,10 +34,12 @@ cgns_reader_module = None
 nvert = None
 nsection = None
 nelement = None
-part_offset_dict = {}
+part_offset_dict = {} #partname: (ielementstart, ielementend, buffer_length)
 elements = None
 points = None
 
+# delegate
+progress_signal = None
 
 def init():
     global cgns_reader_module
@@ -110,16 +88,24 @@ def read_file(filename):
         points.InsertNextPoint(xcord[i], ycord[i], zcord[i])
 
 def get_parts():
-    return part_offset_dict.keys()
+    for part_name, (istart, iend) in part_offset_dict.iteritems():
+        cell_type_array = []
+        cell_array = vtk.vtkCellArray()
+        cell_array.SetNumberOfCells(iend - istart)
+        for idx in xrange(istart, iend):
+            if (idx % ((iend - istart) / 100)) == 0 and progress_signal is not None:
+                progress_signal.emit(int(idx / ((iend - istart) / 100)))
+            this_elem = elements[idx]
+            elem_type = this_elem.type
+            cell_type_array.append(elem_type)
+            npe = vtk_npe[elem_type]
+            cell_array.InsertNextCell(npe, this_elem.pid[0: npe])
+        if progress_signal is not None:
+            progress_signal.emit(99)
+        yield part_name, cell_array, cell_type_array
 
 def get_cell_num_at_part(partname):
     return part_offset_dict[partname][1] - part_offset_dict[partname][0]
-
-def get_cell_at_part(partname):
-    for i in xrange(part_offset_dict[partname][0], part_offset_dict[partname][1]):
-        this_elem = elements[i]
-        cell = vtk_cell_factory(this_elem)
-        yield  cell
 
 def deinit():
     cgns_reader_module.finalize()
@@ -128,11 +114,23 @@ def deinit():
 if __name__ == '__main__':
     init()
     read_file('moxing1.cgns')
-    for part_name in get_parts():
+    for part_name, cell_array, cell_type_array in get_parts():
         ug = vtk.vtkUnstructuredGrid()
         ug.SetPoints(points)
-        nelem = get_cell_num_at_part(part_name)
-        for istep, cell in enumerate(get_cell_at_part(part_name)):
-            cell_type = cell.GetCellType()
-            ug.InsertNextCell(cell_type, cell.GetPointIds())
+        ug.SetCells(cell_type_array, cell_array)
+        mapper =  vtk.vtkDataSetMapper()
+        actor = vtk.vtkActor()
+        mapper.SetInputData(ug)
+        actor.SetMapper(mapper)
+        ren = vtk.vtkRenderer()
+        ren.AddActor(actor)
+        iren = vtk.vtkRenderWindowInteractor()
+        renwin = vtk.vtkRenderWindow()
+        renwin.SetSize(400, 400)
+        iren.SetRenderWindow(renwin)
+        renwin.AddRenderer(ren)
+        iren.Initialize()
+        renwin.Render()
+        iren.Start()
+
     deinit()

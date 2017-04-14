@@ -122,8 +122,5 @@ class CommandlineWidget(QtGui.QTextEdit):
     def __init__(self, content):
         super(CommandlineWidget, self).__init__(content)
         self.setReadOnly(True)
-        self.history_log = []
     def log(self, content):
-        self.history_log.append(content)
         self.append(content)
-        logging.debug(content)

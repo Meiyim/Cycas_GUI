@@ -5,7 +5,7 @@ from PyQt4 import QtCore
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 class VtkProcessor(QtCore.QObject):
-    report_istep_signal = QtCore.pyqtSignal(int)
+    update_progress_bar_signal = QtCore.pyqtSignal(int)
     update_status_signal = QtCore.pyqtSignal(str)
     log_signal = QtCore.pyqtSignal(str)
     report_part_list_signal = QtCore.pyqtSignal(dict)
@@ -22,7 +22,7 @@ class VtkProcessor(QtCore.QObject):
         self.axes_actor = None
         #register signal
 
-        self.report_istep_signal.connect(main_window.udpate_progress_bar_slot)
+        self.update_progress_bar_signal.connect(main_window.udpate_progress_bar_slot)
         self.update_status_signal.connect(main_window.update_status_bar_slot)
         self.log_signal.connect(main_window.log_slot)
         self.render_signal.connect(self.render_slot)
@@ -117,27 +117,23 @@ class LoadCgnsTask(QtCore.QRunnable):
         self.vtk_processor.clear_parts_signal.emit()
         import cgns_reader
         cgns_reader.init()
+        cgns_reader.progress_signal = self.vtk_processor.update_progress_bar_signal
         cgns_reader.read_file('moxing1.cgns')
         self.vtk_processor.log_signal.emit('number of vertices: %d \n number of parts: %d \n number of elements: %d'
                            % (cgns_reader.nvert, cgns_reader.nsection, cgns_reader.nelement))
-        part_list = cgns_reader.get_parts()
-        self.vtk_processor.log_signal.emit('found parts: %s\n' % str(part_list))
+        self.vtk_processor.log_signal.emit('found parts: %s' % str(cgns_reader.part_offset_dict.keys()))
         v_part = set()
         b_part = set()
-        for part_name in part_list:
+        for part_name, cell_array, cell_type_array in cgns_reader.get_parts():
             ug = vtk.vtkUnstructuredGrid()
             ug.SetPoints(cgns_reader.points)
             self.vtk_processor.log_signal.emit('processing part:%s' % part_name)
             self.vtk_processor.update_status_signal.emit('loading mesh part: %s... please wait' % part_name)
-            nelem = cgns_reader.get_cell_num_at_part(part_name)
-            for istep, cell in enumerate(cgns_reader.get_cell_at_part(part_name)):
-                self.vtk_processor.report_istep_signal.emit(int(istep* 100./nelem) )
-                cell_type = cell.GetCellType()
-                ug.InsertNextCell(cell_type, cell.GetPointIds())
-                if cell_type is vtk.VTK_TRIANGLE or cell_type is vtk.VTK_QUAD:
-                    b_part.add(part_name)
-                else:
-                    v_part.add(part_name)
+            ug.SetCells(cell_type_array, cell_array)
+            if vtk.VTK_TRIANGLE in cell_type_array or vtk.VTK_QUAD in cell_type_array:
+                b_part.add(part_name)
+            else:
+                v_part.add(part_name)
             mapper = vtk.vtkDataSetMapper()
             actor = vtk.vtkActor()
             self.vtk_processor.ug_mapper_actor[part_name] = (ug, mapper, actor)
@@ -148,7 +144,7 @@ class LoadCgnsTask(QtCore.QRunnable):
 
         self.vtk_processor.report_part_list_signal.emit({'Volume Parts':list(v_part), 'Boundary Parts':list(b_part)})
         # Create Filter
-        #self.vtk_processor.vtk_iren.Render()
+        self.vtk_processor.render_signal.emit()
         self.vtk_processor.vtk_ren.ResetCamera()
         self.vtk_processor.update_status_signal.emit('done')
         cgns_reader.deinit()

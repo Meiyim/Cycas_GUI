@@ -39,20 +39,20 @@ DLL_EXPORT int read_verts(void**, void**, void**);
 DLL_EXPORT int read_element(char**, size_t**, Element**);
 DLL_EXPORT int finalize();
 
-int Gmsh_type(ElementType_t cgns_type, int* gmsh_type){
+int vtk_type(ElementType_t cgns_type, int* gmsh_type){
     switch(cgns_type){
     case TRI_3:
-        *gmsh_type = 2; break;
-    case QUAD_4:
-        *gmsh_type = 3; break;
-    case TETRA_4:
-        *gmsh_type = 4; break;
-    case PYRA_5:
-        *gmsh_type = 7; break;
-    case PENTA_6:
-        *gmsh_type = 6; break;
-    case HEXA_8:
         *gmsh_type = 5; break;
+    case QUAD_4:
+        *gmsh_type = 9; break;
+    case TETRA_4:
+        *gmsh_type = 10; break;
+    case PYRA_5:
+        *gmsh_type = 14; break;
+    case PENTA_6:
+        *gmsh_type = 13; break;
+    case HEXA_8:
+        *gmsh_type = 12; break;
     default:
         fprintf(stderr, "unknown element type %s\n", cg_ElementTypeName(cgns_type)); 
         return -1;
@@ -147,7 +147,7 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
 
     cgsize_t* pid = NULL;
     *elem_list = (Element*) malloc(nelem * sizeof(Element));
-    *part_offset = (size_t*) malloc((nsection + 1) * sizeof(Element));
+    *part_offset = (size_t*) malloc((nsection + 1) * sizeof(size_t));
     *part_name = (char*) malloc(nsection * 512 * sizeof(char));
     Element* elem_list_iter = *elem_list;
     size_t* part_offset_iter = *part_offset;
@@ -171,7 +171,7 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
             ERROR_CHECK(cg_npe(type, &npe));
             for (int iele = 0; iele != nelem_sec; ++iele) {
                 Element* this_element = elem_list_iter++;
-                if(Gmsh_type(type, &this_element->type)) return -1;
+                if(vtk_type(type, &this_element->type)) return -1;
                 for (int j = 0; j != npe; ++j) {
                     this_element->pid[j] = pid[iele * npe + j] - 1; //why -1???
                 }
@@ -184,7 +184,7 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
 				ElementType_t cell_type = (ElementType_t) pid[counter++];
 				ERROR_CHECK(cg_npe(cell_type, &npe));
 				Element* this_element = elem_list_iter++;
-				if(Gmsh_type(cell_type, &this_element->type)) return -1;
+				if(vtk_type(cell_type, &this_element->type)) return -1;
 				for (int j = 0; j != npe; ++j) {
 					this_element->pid[j] = pid[counter++] - 1; //why -1???
 				}
