@@ -94,6 +94,11 @@ class VtkProcessor(QtCore.QObject):
     @QtCore.pyqtSlot()
     def render_slot(self):
         self.vtk_iren.Render()
+    @QtCore.pyqtSlot()
+    def fit_slot(self):
+        self.vtk_ren.ResetCamera()
+        self.render_signal.emit()
+
 
 # background task
 class LoadCgnsTask(QtCore.QRunnable):

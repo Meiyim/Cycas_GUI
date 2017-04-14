@@ -77,6 +77,8 @@ class MainWindow(QtGui.QMainWindow):
                                              icon='icons/exit.png', short_cut='Ctrl+E', tip='Import CGNS Mesh')
         show_output_panel_action = self.new_action('Output', 'triggered()', self.show_output_panel,
                                                    icon='icons/output_config.png', tip = 'configure output directory')
+        fit_window_action = self.new_action('Fit Window', 'triggered()', self.vtk_processor.fit_slot,
+                                            short_cut = 'Ctrl+F', tip = 'resize the VTK window')
         # status bar and progress bar
         statbar = self.statusBar()
         pbar = QtGui.QProgressBar(statbar)
@@ -90,6 +92,8 @@ class MainWindow(QtGui.QMainWindow):
         file_menu = menubar.addMenu('&File')
         file_menu.addAction(exit_action)
         file_menu.addAction(import_mesh_action)
+        view_menu = menubar.addMenu('&View')
+        view_menu.addAction(fit_window_action)
 
         toolbar = self.addToolBar('Mesh')
         toolbar.addAction(show_mesh_panel_action)
