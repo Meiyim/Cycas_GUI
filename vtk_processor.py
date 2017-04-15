@@ -26,7 +26,7 @@ class VtkProcessor(QtCore.QObject):
         self.update_status_signal.connect(main_window.update_status_bar_slot)
         self.log_signal.connect(main_window.log_slot)
         self.render_signal.connect(self.render_slot)
-        mesh_dock = main_window.left_dock_panels['mesh_conf']
+        mesh_dock = main_window.left_dock_panels['part_tree_conf']
         self.report_part_list_signal.connect(mesh_dock.set_mesh_part_tree_slot)
         self.clear_parts_signal.connect(mesh_dock.clear_parts_slot)
         mesh_dock.vtk_processor = self

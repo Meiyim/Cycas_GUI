@@ -1,6 +1,7 @@
 import ctypes as ct
 import numpy as np
 import vtk
+import platform
 
 
 class CGNSException(Exception):
@@ -43,7 +44,12 @@ progress_signal = None
 
 def init():
     global cgns_reader_module
-    cgns_reader_module = np.ctypeslib.load_library('cgns_reader_module.so', '.')
+    cgns_reader_module = None
+    if platform.system() == 'Windows':
+        cgns_reader_module = ct.windll.LoadLibrary('cgns_reader.dll')
+    else:
+        cgns_reader_module = ct.cdll.LoadLibrary('cgns_reader_dll.so')
+
     cgns_reader_module.read_file.argtypes = [ct.c_char_p, uint_p, uint_p, uint_p, int_p]
     cgns_reader_module.read_file.restype = ct.c_int
     cgns_reader_module.read_verts.restype = ct.c_int

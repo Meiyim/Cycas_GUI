@@ -3,9 +3,18 @@ import logging
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
-class LeftDockFrame(QtGui.QFrame):
+class MaterialConfFrame(QtGui.QFrame):
+    pass
+
+class MeshConfFrame(QtGui.QFrame):
+    pass
+
+class SolverConfFrame(QtGui.QFrame):
+    pass
+
+class PartsTreeFrame(QtGui.QFrame):
     def __init__(self):
-        super(LeftDockFrame, self).__init__()
+        super(PartsTreeFrame, self).__init__()
         vbox = QtGui.QVBoxLayout()
         self.setLayout(vbox)
         self.dict_tree = {'Boundary Parts':{}, 'Volume Parts':{}}

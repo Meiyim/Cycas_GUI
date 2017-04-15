@@ -5,10 +5,11 @@
 #include<assert.h>
 
 #include<cgnslib.h>
-
 #define ERROR_CHECK(command) do{if(command) {fprintf(stderr, "CGNS error at line %d:%s\n", __LINE__,cg_get_error()); return 1;}} while(0)
 #define CGNS_VERBOSE
+
 #ifdef _MSC_VER
+#pragma comment(lib, "cgns.lib")
 #define DLL_EXPORT __declspec( dllexport )
 #else
 #define DLL_EXPORT
@@ -157,7 +158,11 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
         *(part_name_iter++) = '@';
         ERROR_CHECK(cg_section_read(cgns_file, ibase, izone, isec, charbuffer, &type,
                                     &istart, &iend, &nbnd, &parent_flag));
+#ifdef _MSC_VER
+        strcpy_s(part_name_iter, 1024, charbuffer);
+#else
         strcpy(part_name_iter, charbuffer);
+#endif
         part_name_iter += strlen(charbuffer);
         ERROR_CHECK(cg_ElementDataSize(cgns_file, ibase, izone, isec, &sec_data_size));
         pid = (cgsize_t*)malloc(sec_data_size * sizeof(cgsize_t));
