@@ -3,11 +3,104 @@ import logging
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
+section_header_font_sytle = "QLabel{font-size:13px;font-weight:bold;font-family:Roman times;}"
+
 class MaterialConfFrame(QtGui.QFrame):
     pass
 
 class MeshConfFrame(QtGui.QFrame):
-    pass
+    def __init__(self):
+        super(MeshConfFrame, self).__init__()
+        vbox = QtGui.QVBoxLayout()
+        self.scale_mod = 0  # 0 -- no scale, 1 -- exact size, 2 -- scale ratio
+        # row
+        self.insert_section_header('Input Config', vbox)
+        hbox = QtGui.QHBoxLayout()
+        btm = QtGui.QPushButton('Import Mesh')
+        btm.setFixedSize(100, 30)
+        hbox.addWidget(btm)
+        te = QtGui.QTextEdit()
+        te.setReadOnly(True)
+        te.setFixedHeight(30)
+        hbox.addWidget(te)
+        vbox.addLayout(hbox)
+        # row
+        self.insert_section_header('Mesh Quality', vbox)
+        hbox = QtGui.QHBoxLayout()
+        btm = QtGui.QPushButton('Check Quality')
+        btm.setFixedSize(150, 30)
+        hbox.addWidget(btm)
+        btm = QtGui.QPushButton('Quality Report')
+        btm.setFixedSize(150, 30)
+        hbox.addWidget(btm)
+        vbox.addLayout(hbox)
+        # row
+        self.insert_section_header('Size Scale', vbox)
+        hbox = QtGui.QHBoxLayout()
+        la = QtGui.QLabel('Mesh Size:')
+        la.setFixedSize(100, 50)
+        hbox.addWidget(la)
+        self.mesh_size_label = QtGui.QLabel('(Xmin, Ymin, Zmin)\n(Xmax, Ymax, Zmax)')
+        self.mesh_size_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.mesh_size_label.setFrameStyle(QtGui.QFrame.Sunken | QtGui.QFrame.Box)
+        hbox.addWidget(self.mesh_size_label)
+        vbox.addLayout(hbox)
+        hbox = QtGui.QHBoxLayout()
+        combo_box = QtGui.QComboBox()
+        combo_box.addItem('Not Scale')
+        combo_box.addItem('Scale to:')
+        combo_box.addItem('Scale by ratio:')
+        combo_box.setFixedSize(100, 30)
+        combo_box.currentIndexChanged.connect(self.did_change_scale_mode)
+        hbox.addWidget(combo_box)
+        self.input_text_edit = QtGui.QTextEdit()
+        self.input_text_edit.setFixedSize(100, 30)
+        self.input_text_edit.setEnabled(False)
+        hbox.addWidget(self.input_text_edit)
+        self.scale_btm = QtGui.QPushButton('Scale!')
+        self.scale_btm.setFixedSize(100, 30)
+        self.scale_btm.clicked.connect(self.did_push_scaled_button)
+        self.scale_btm.setEnabled(False)
+        hbox.addWidget(self.scale_btm)
+        vbox.addLayout(hbox)
+
+        # row
+        vbox.addStretch()
+        self.setLayout(vbox)
+    def insert_section_header(self, header, vbox):
+        la = QtGui.QLabel(header)
+        la.setStyleSheet(section_header_font_sytle)
+        la.setFixedHeight(15)
+        vbox.addWidget(la)
+
+    @QtCore.pyqtSlot()
+    def did_push_scaled_button(self):
+        number = float(self.tr(self.input_text_edit.toPlainText()))
+        if self.scale_mod == 1:
+            print  'scale to exact size: %f!' % number
+        elif self.scale_mod == 2:
+            print  'scale to ratio: %f!' % number
+        else:
+            return
+
+    @QtCore.pyqtSlot(int)
+    def did_change_scale_mode(self, idx):
+        self.scale_mod = idx
+        if idx == 0:
+            self.scale_btm.setEnabled(False)
+            self.input_text_edit.setEnabled(False)
+            self.input_text_edit.setText('')
+        elif idx == 1:
+            self.scale_btm.setEnabled(True)
+            self.input_text_edit.setEnabled(True)
+            self.input_text_edit.setText('exact size')
+        elif idx == 2:
+            self.scale_btm.setEnabled(True)
+            self.input_text_edit.setEnabled(True)
+            self.input_text_edit.setText('ratio')
+        else:
+            assert  False
+
 
 class SolverConfFrame(QtGui.QFrame):
     pass
@@ -20,6 +113,7 @@ class PartsTreeFrame(QtGui.QFrame):
         self.dict_tree = {'Boundary Parts':{}, 'Volume Parts':{}}
         self.vtk_processor = None #set later by processor
         tree_widget = QtGui.QTreeWidget()
+        tree_widget.setFixedWidth(300)
         vbox.addWidget(tree_widget)
         tree_widget.setColumnCount(1)
         tree_widget.setHeaderLabel('Mesh-Tree')
@@ -42,7 +136,7 @@ class PartsTreeFrame(QtGui.QFrame):
         hbox = QtGui.QHBoxLayout()
         vbox.addLayout(hbox)
         combo_box = QtGui.QComboBox()
-        combo_box.setFixedSize(180, 28)
+        combo_box.setFixedSize(200, 28)
         combo_box.setEnabled(False)
         edit_button = QtGui.QPushButton("Edit")
         combo_box.addItem('Boundary Type')
@@ -92,26 +186,10 @@ class PartsTreeFrame(QtGui.QFrame):
         self.root_vpart_item.takeChildren()
         self.root_bpart_item.takeChildren()
 
-class LeftDockFrame___(QtGui.QFrame):
-    def __init__(self):
-        super(LeftDockFrame___, self).__init__()
-        vbox = QtGui.QVBoxLayout()
-        vbox.addLayout(self.line_factory())
-        vbox.addLayout(self.line_factory())
-        vbox.addLayout(self.line_factory())
-        vbox.addStretch(100)
-        self.setLayout(vbox)
 
-    def line_factory(self):
-        ret = QtGui.QHBoxLayout()
-        content = QtGui.QLabel('hello world')
-        content.setFixedSize(200, 30)
-        ret.addWidget(content)
-        return ret
-
-class LeftDockFrame2(QtGui.QFrame):
+class OutputCOnfFrame(QtGui.QFrame):
     def __init__(self):
-        super(LeftDockFrame2, self).__init__()
+        super(OutputCOnfFrame, self).__init__()
         vbox = QtGui.QVBoxLayout()
         vbox.addLayout(self.line_factory())
         vbox.addLayout(self.line_factory())

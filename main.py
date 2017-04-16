@@ -38,11 +38,11 @@ class MainWindow(QtGui.QMainWindow):
     def setup_ui(self):
         # init main window
         # init left dock frames
-        self.left_dock_panels['part_tree_conf'] = dock_frame.PartsTreeFrame()
-        self.left_dock_panels['solver_conf'] = dock_frame.SolverConfFrame()
-        self.left_dock_panels['output_conf'] = dock_frame.LeftDockFrame2()
-        self.left_dock_panels['mesh_conf'] = dock_frame.MeshConfFrame()
-        self.left_dock_panels['material_conf'] = dock_frame.MaterialConfFrame()
+        self.left_dock_panels['PartTree'] = dock_frame.PartsTreeFrame()
+        self.left_dock_panels['Solver'] = dock_frame.SolverConfFrame()
+        self.left_dock_panels['Output'] = dock_frame.OutputCOnfFrame()
+        self.left_dock_panels['Mesh'] = dock_frame.MeshConfFrame()
+        self.left_dock_panels['Material'] = dock_frame.MaterialConfFrame()
 
         # init 2 docks
         dock2 = QtGui.QDockWidget(self.tr("Command Line"), self)
@@ -60,9 +60,10 @@ class MainWindow(QtGui.QMainWindow):
         dock1.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
         dock1.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         #te1 = QtGui.QTextEdit(self.tr("ting1"))
-        te1 = self.left_dock_panels['part_tree_conf']
+        te1 = self.left_dock_panels['PartTree']
         dock1.setWidget(te1)
         self.dock_left = dock1
+        dock1.setStyleSheet("QLabel{font-size:13px;font-family:Roman times;}")
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock1)
 
         # add vtk
@@ -79,15 +80,15 @@ class MainWindow(QtGui.QMainWindow):
         fit_window_action = self.new_action('Fit Window', 'triggered()', self.vtk_processor.fit_slot,
                                             short_cut = 'Ctrl+F', tip = 'resize the VTK window')
 
-        self.new_action('Mesh', 'triggered()', self.show_mesh_panel,
+        self.new_action('Mesh', 'triggered()', self.show_panel,
                         tip='mesh configuration')
-        self.new_action('PartTree', 'triggered()', self.show_part_tree_panel,
+        self.new_action('PartTree', 'triggered()', self.show_panel,
                         tip='Show mesh panel')
-        self.new_action('Output', 'triggered()', self.show_output_panel,
+        self.new_action('Output', 'triggered()', self.show_panel,
                          icon='icons/output_config.png', tip = 'configure output directory')
-        self.new_action('Solver', 'triggered()', self.show_solver_panel,
+        self.new_action('Solver', 'triggered()', self.show_panel,
                          tip = 'solver configuration')
-        self.new_action('Material', 'triggered()', self.show_material_panel,
+        self.new_action('Material', 'triggered()', self.show_panel,
                          tip = 'material configuration')
 
         # status bar and progress bar
@@ -162,32 +163,24 @@ class MainWindow(QtGui.QMainWindow):
         self.move((screen.width() - size.width()) / 2, (screen.height() - size.height()) / 2)
 
     # action call backs
+    @QtCore.pyqtSlot()
     def import_mesh(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
         self.log_widget.log('loading mesh %s' % filename)
         task = vtk_proc.LoadCgnsTask(self.vtk_processor)
         QtCore.QThreadPool.globalInstance().start(task)
 
-    def show_mesh_panel(self):
-        pass
-
-    def show_solver_panel(self):
-        pass
-
-    def show_material_panel(self):
-        pass
-
-    def show_output_panel(self):
-        panel = self.left_dock_panels['output_conf']
+    @QtCore.pyqtSlot()
+    def show_panel(self):
+        key = str(self.sender().text())
+        self.dock_left.setWindowTitle(key + ' Panel')
+        panel = self.left_dock_panels[key]
         if self.dock_left.widget is not panel:
             self.dock_left.setWidget(panel)
 
-    def show_part_tree_panel(self):
-        panel = self.left_dock_panels['part_tree_conf']
-        if self.dock_left.widget is not panel:
-            self.dock_left.setWidget(panel)
 
 app = QtGui.QApplication(sys.argv)
+app.setApplicationName('Cycas-GUI')
 main = MainWindow()
 main.show()
 sys.exit(app.exec_())
