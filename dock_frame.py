@@ -3,10 +3,21 @@ import logging
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
+# utility
 section_header_font_sytle = "QLabel{font-size:13px;font-weight:bold;font-family:Roman times;}"
 
+def insert_section_header(header, vbox):
+    la = QtGui.QLabel(header)
+    la.setStyleSheet(section_header_font_sytle)
+    la.setFixedHeight(15)
+    vbox.addWidget(la)
+
 class MaterialConfFrame(QtGui.QFrame):
-    pass
+    def __init__(self):
+        super(MaterialConfFrame, self).__init__()
+
+    def generate_input_card(self):
+        return ''
 
 class MeshConfFrame(QtGui.QFrame):
     def __init__(self):
@@ -14,7 +25,7 @@ class MeshConfFrame(QtGui.QFrame):
         vbox = QtGui.QVBoxLayout()
         self.scale_mod = 0  # 0 -- no scale, 1 -- exact size, 2 -- scale ratio
         # row
-        self.insert_section_header('Input Config', vbox)
+        insert_section_header('Input Config', vbox)
         hbox = QtGui.QHBoxLayout()
         btm = QtGui.QPushButton('Import Mesh')
         btm.setFixedSize(100, 30)
@@ -25,7 +36,7 @@ class MeshConfFrame(QtGui.QFrame):
         hbox.addWidget(te)
         vbox.addLayout(hbox)
         # row
-        self.insert_section_header('Mesh Quality', vbox)
+        insert_section_header('Mesh Quality', vbox)
         hbox = QtGui.QHBoxLayout()
         btm = QtGui.QPushButton('Check Quality')
         btm.setFixedSize(150, 30)
@@ -35,7 +46,7 @@ class MeshConfFrame(QtGui.QFrame):
         hbox.addWidget(btm)
         vbox.addLayout(hbox)
         # row
-        self.insert_section_header('Size Scale', vbox)
+        insert_section_header('Size Scale', vbox)
         hbox = QtGui.QHBoxLayout()
         la = QtGui.QLabel('Mesh Size:')
         la.setFixedSize(100, 50)
@@ -67,11 +78,6 @@ class MeshConfFrame(QtGui.QFrame):
         # row
         vbox.addStretch()
         self.setLayout(vbox)
-    def insert_section_header(self, header, vbox):
-        la = QtGui.QLabel(header)
-        la.setStyleSheet(section_header_font_sytle)
-        la.setFixedHeight(15)
-        vbox.addWidget(la)
 
     @QtCore.pyqtSlot()
     def did_push_scaled_button(self):
@@ -101,9 +107,70 @@ class MeshConfFrame(QtGui.QFrame):
         else:
             assert  False
 
+    def generate_input_card(self):
+        return ''
+
 
 class SolverConfFrame(QtGui.QFrame):
-    pass
+    def __init__(self):
+        super(SolverConfFrame, self).__init__()
+        self.setFixedWidth(300)
+        self.models = {'Energy Equation':None,
+                       'Viscid Model':None,
+                       'Speciecs':None}
+        vbox = QtGui.QVBoxLayout()
+        #row
+        insert_section_header('Solver Config', vbox)
+        hbox = QtGui.QHBoxLayout()
+        frame_in = QtGui.QFrame()
+        frame_in.setFrameStyle(QtGui.QFrame.Sunken | QtGui.QFrame.Box)
+        vbox_in = QtGui.QVBoxLayout()
+        vbox_in.addWidget(QtGui.QLabel('Solver Type:'))
+        self.pressure_based_button = QtGui.QRadioButton('Pressure Based')
+        vbox_in.addWidget(self.pressure_based_button)
+        self.density_based_button = QtGui.QRadioButton('Density Based')
+        vbox_in.addWidget(self.density_based_button)
+        frame_in.setLayout(vbox_in)
+        hbox.addWidget(frame_in)
+        frame_in = QtGui.QFrame()
+        frame_in.setFrameStyle(QtGui.QFrame.Sunken | QtGui.QFrame.Box)
+        vbox_in = QtGui.QVBoxLayout()
+        vbox_in.addWidget(QtGui.QLabel('Time Step:'))
+        self.transient_based_button = QtGui.QRadioButton('Transient')
+        vbox_in.addWidget(self.transient_based_button)
+        self.steaady_based_button = QtGui.QRadioButton('Steady')
+        vbox_in.addWidget(self.steaady_based_button)
+        frame_in.setLayout(vbox_in)
+        hbox.addWidget(frame_in)
+        vbox.addLayout(hbox)
+        #row
+        insert_section_header('Gravity Vector', vbox)
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(QtGui.QLabel('Gx, Gy, Gz ='))
+        te = QtGui.QTextEdit('0., 0., 0.')
+        te.setFixedSize(200, 30)
+        hbox.addWidget(te)
+        vbox.addLayout(hbox)
+        # row
+        insert_section_header('Model Selection',vbox)
+        self.table = QtGui.QTableWidget(len(self.models), 2)
+        self.table.setHorizontalHeaderLabels(['Model', 'Description'])
+        self.table.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        self.table.setColumnWidth(0, 120)
+        self.table.setColumnWidth(1, 140)
+        for idx, model in enumerate(self.models.keys()):
+            it = QtGui.QTableWidgetItem(model, 0) # table-type 0
+            self.table.setItem(idx, 0, it)
+        vbox.addWidget(self.table)
+        # row
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(QtGui.QPushButton('Edit'))
+        hbox.addWidget(QtGui.QPushButton('Add'))
+        vbox.addLayout(hbox)
+        self.setLayout(vbox)
+
+    def generate_input_card(self):
+        return ''
 
 class PartsTreeFrame(QtGui.QFrame):
     def __init__(self):
@@ -186,6 +253,9 @@ class PartsTreeFrame(QtGui.QFrame):
         self.root_vpart_item.takeChildren()
         self.root_bpart_item.takeChildren()
 
+    def generate_input_card(self):
+        return ''
+
 
 class OutputCOnfFrame(QtGui.QFrame):
     def __init__(self):
@@ -209,5 +279,6 @@ class CommandlineWidget(QtGui.QTextEdit):
     def __init__(self, content):
         super(CommandlineWidget, self).__init__(content)
         self.setReadOnly(True)
+
     def log(self, content):
         self.append(content)
