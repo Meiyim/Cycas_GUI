@@ -17,11 +17,12 @@ class MaterialConfFrame(QtGui.QFrame):
         super(MaterialConfFrame, self).__init__()
 
     def generate_input_card(self):
-        return ''
+        return ['']
 
 class MeshConfFrame(QtGui.QFrame):
     def __init__(self):
         super(MeshConfFrame, self).__init__()
+        self.setFixedWidth(300)
         vbox = QtGui.QVBoxLayout()
         self.scale_mod = 0  # 0 -- no scale, 1 -- exact size, 2 -- scale ratio
         # row
@@ -39,10 +40,8 @@ class MeshConfFrame(QtGui.QFrame):
         insert_section_header('Mesh Quality', vbox)
         hbox = QtGui.QHBoxLayout()
         btm = QtGui.QPushButton('Check Quality')
-        btm.setFixedSize(150, 30)
         hbox.addWidget(btm)
         btm = QtGui.QPushButton('Quality Report')
-        btm.setFixedSize(150, 30)
         hbox.addWidget(btm)
         vbox.addLayout(hbox)
         # row
@@ -61,7 +60,7 @@ class MeshConfFrame(QtGui.QFrame):
         combo_box.addItem('Not Scale')
         combo_box.addItem('Scale to:')
         combo_box.addItem('Scale by ratio:')
-        combo_box.setFixedSize(100, 30)
+        combo_box.setFixedSize(90, 30)
         combo_box.currentIndexChanged.connect(self.did_change_scale_mode)
         hbox.addWidget(combo_box)
         self.input_text_edit = QtGui.QTextEdit()
@@ -69,7 +68,7 @@ class MeshConfFrame(QtGui.QFrame):
         self.input_text_edit.setEnabled(False)
         hbox.addWidget(self.input_text_edit)
         self.scale_btm = QtGui.QPushButton('Scale!')
-        self.scale_btm.setFixedSize(100, 30)
+        self.scale_btm.setFixedSize(50, 30)
         self.scale_btm.clicked.connect(self.did_push_scaled_button)
         self.scale_btm.setEnabled(False)
         hbox.addWidget(self.scale_btm)
@@ -108,7 +107,7 @@ class MeshConfFrame(QtGui.QFrame):
             assert  False
 
     def generate_input_card(self):
-        return ''
+        return ['']
 
 
 class SolverConfFrame(QtGui.QFrame):
@@ -170,17 +169,17 @@ class SolverConfFrame(QtGui.QFrame):
         self.setLayout(vbox)
 
     def generate_input_card(self):
-        return ''
+        return ['']
 
 class PartsTreeFrame(QtGui.QFrame):
     def __init__(self):
         super(PartsTreeFrame, self).__init__()
+        self.setFixedWidth(300)
         vbox = QtGui.QVBoxLayout()
         self.setLayout(vbox)
         self.dict_tree = {'Boundary Parts':{}, 'Volume Parts':{}}
         self.vtk_processor = None #set later by processor
         tree_widget = QtGui.QTreeWidget()
-        tree_widget.setFixedWidth(300)
         vbox.addWidget(tree_widget)
         tree_widget.setColumnCount(1)
         tree_widget.setHeaderLabel('Mesh-Tree')
@@ -203,8 +202,9 @@ class PartsTreeFrame(QtGui.QFrame):
         hbox = QtGui.QHBoxLayout()
         vbox.addLayout(hbox)
         combo_box = QtGui.QComboBox()
-        combo_box.setFixedSize(200, 28)
+        combo_box.setFixedSize(180, 28)
         combo_box.setEnabled(False)
+        hbox.addWidget(combo_box)
         edit_button = QtGui.QPushButton("Edit")
         combo_box.addItem('Boundary Type')
         combo_box.addItem('Inlet')
@@ -212,8 +212,6 @@ class PartsTreeFrame(QtGui.QFrame):
         combo_box.addItem('Wall')
         combo_box.addItem('Symmetric')
         combo_box.addItem('Periodic')
-
-        hbox.addWidget(combo_box)
         hbox.addWidget(edit_button)
 
         tree_widget.itemChanged.connect(self.item_changed_slot)
@@ -254,7 +252,7 @@ class PartsTreeFrame(QtGui.QFrame):
         self.root_bpart_item.takeChildren()
 
     def generate_input_card(self):
-        return ''
+        return ['']
 
 
 class OutputCOnfFrame(QtGui.QFrame):
