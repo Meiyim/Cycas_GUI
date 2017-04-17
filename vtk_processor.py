@@ -18,8 +18,8 @@ class VtkProcessor(QtCore.QObject):
         self.vtk_widget = None
         self.vtk_ren = None
         self.vtk_iren = None
+        self.orientation_marker = None
         self.ug_mapper_actor = {}
-        self.axes_actor = None
         #register signal
 
         self.update_progress_bar_signal.connect(main_window.udpate_progress_bar_slot)
@@ -45,14 +45,15 @@ class VtkProcessor(QtCore.QObject):
         vtk_widget.GetRenderWindow().AddRenderer(vtk_ren)
         vtk_iren = vtk_widget.GetRenderWindow().GetInteractor()
         self.vtk_iren = vtk_iren
+        interactor_style = vtk.vtkInteractorStyleTrackballCamera()
+        self.vtk_iren.SetInteractorStyle(interactor_style)
         # Create Axes actor
         axesActor = vtk.vtkAxesActor()
-        axes_transform = vtk.vtkTransform()
-        axes_transform.Translate(-5., -5., -5.)
-        axesActor.SetUserTransform(axes_transform)
-        vtk_ren.AddActor(axesActor)
-        vtk_ren.DebugOn()
-        self.axes_actor = axesActor
+        self.orientation_marker = vtk.vtkOrientationMarkerWidget()
+        self.orientation_marker.SetOrientationMarker(axesActor)
+        self.orientation_marker.SetInteractor(self.vtk_iren)
+        self.orientation_marker.EnabledOn()
+        self.orientation_marker.InteractiveOn()
 
         # test work
         # Create source
