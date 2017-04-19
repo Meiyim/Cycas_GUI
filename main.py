@@ -34,14 +34,14 @@ class MainWindow(QtGui.QMainWindow):
         self.vtk_processor = vtk_proc.VtkProcessor(self)
 
         # init left dock frames
-        self.left_dock_panels['PartTree'] = dock_frame.PartsTreeFrame(self.vtk_processor)
+        self.left_dock_panels['Boundary'] = dock_frame.PartsTreeFrame(self.vtk_processor)
         self.left_dock_panels['Solver'] = dock_frame.SolverConfFrame(self.vtk_processor)
         self.left_dock_panels['Output'] = dock_frame.OutputConfFrame(self.vtk_processor)
         self.left_dock_panels['Mesh'] = dock_frame.MeshConfFrame(self.vtk_processor)
         self.left_dock_panels['Material'] = dock_frame.MaterialConfFrame(self.vtk_processor)
 
         # connect signal in main window
-        mesh_dock = self.left_dock_panels['PartTree']
+        mesh_dock = self.left_dock_panels['Boundary']
         uti.signal_center.report_part_list_signal.connect(mesh_dock.set_mesh_part_tree_slot)
         uti.signal_center.clear_parts_signal.connect(mesh_dock.clear_parts_slot)
         # init 2 docks
@@ -60,7 +60,7 @@ class MainWindow(QtGui.QMainWindow):
         dock1.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
         dock1.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         #te1 = QtGui.QTextEdit(self.tr("ting1"))
-        te1 = self.left_dock_panels['PartTree']
+        te1 = self.left_dock_panels['Boundary']
         dock1.setWidget(te1)
         self.dock_left = dock1
         dock1.setStyleSheet("QLabel{font-size:13px;font-family:Roman times;}")
@@ -81,14 +81,14 @@ class MainWindow(QtGui.QMainWindow):
 
         self.new_action('Mesh', 'triggered()', self.show_panel,
                         tip='mesh configuration')
-        self.new_action('PartTree', 'triggered()', self.show_panel,
-                        tip='Show mesh panel')
         self.new_action('Output', 'triggered()', self.show_panel,
                          icon='icons/output_config.png', tip = 'configure output directory')
         self.new_action('Solver', 'triggered()', self.show_panel,
                          tip = 'solver configuration')
         self.new_action('Material', 'triggered()', self.show_panel,
                          tip = 'material configuration')
+        self.new_action('Boundary', 'triggered()', self.show_panel,
+                        tip='boundary configuration')
 
         # status bar and progress bar
         statbar = self.statusBar()
@@ -107,10 +107,10 @@ class MainWindow(QtGui.QMainWindow):
         view_menu.addAction(fit_window_action)
         # tool bar
         self.addToolBar('Mesh Config').addAction(self.action_dict['Mesh'])
-        self.addToolBar('Parts Config').addAction(self.action_dict['PartTree'])
         self.addToolBar('Solver Config').addAction(self.action_dict['Solver'])
         self.addToolBar('Material Config').addAction(self.action_dict['Material'])
         self.addToolBar('Output Config').addAction(self.action_dict['Output'])
+        self.addToolBar('Boundary Config').addAction(self.action_dict['Boundary'])
 
     def new_action(self, title, signal, slot_func, **kwargs):
         if kwargs.get('icon') is None:

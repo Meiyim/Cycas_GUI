@@ -38,21 +38,21 @@ class MeshConfFrame(ConfFrame):
         btm.setFixedSize(100, 30)
         btm.clicked.connect(self.import_mesh)
         hbox.addWidget(btm)
-        te = QtGui.QTextEdit()
-        te.setReadOnly(True)
-        te.setFixedHeight(30)
-        hbox.addWidget(te)
+        self.import_dir = QtGui.QTextEdit()
+        self.import_dir.setReadOnly(True)
+        self.import_dir.setFixedHeight(30)
+        hbox.addWidget(self.import_dir)
         vbox.addLayout(hbox)
         # row
         insert_section_header('Mesh Quality', vbox)
         hbox = QtGui.QHBoxLayout()
-        btm = QtGui.QPushButton('Check Quality')
+        btm  = QtGui.QPushButton('Check Quality')
         hbox.addWidget(btm)
-        btm = QtGui.QPushButton('Quality Report')
+        btm  = QtGui.QPushButton('Quality Report')
         hbox.addWidget(btm)
         vbox.addLayout(hbox)
         # row
-        insert_section_header('Size Scale', vbox)
+        insert_section_header('Mesh Unit', vbox)
         hbox = QtGui.QHBoxLayout()
         la = QtGui.QLabel('Mesh Size:')
         la.setFixedSize(100, 50)
@@ -63,22 +63,18 @@ class MeshConfFrame(ConfFrame):
         hbox.addWidget(self.mesh_size_label)
         vbox.addLayout(hbox)
         hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(QtGui.QLabel('Original\nMesh Unit'))
         combo_box = QtGui.QComboBox()
-        combo_box.addItem('Not Scale')
-        combo_box.addItem('Scale to:')
-        combo_box.addItem('Scale by ratio:')
-        combo_box.setFixedSize(90, 30)
+        combo_box.addItem('m')
+        combo_box.addItem('mm')
+        combo_box.addItem('cm')
+        combo_box.addItem('Scale ratio')
         combo_box.currentIndexChanged.connect(self.did_change_scale_mode)
         hbox.addWidget(combo_box)
         self.input_text_edit = QtGui.QTextEdit()
-        self.input_text_edit.setFixedSize(100, 30)
+        self.input_text_edit.setFixedHeight(30)
         self.input_text_edit.setEnabled(False)
         hbox.addWidget(self.input_text_edit)
-        self.scale_btm = QtGui.QPushButton('Scale!')
-        self.scale_btm.setFixedSize(50, 30)
-        self.scale_btm.clicked.connect(self.did_push_scaled_button)
-        self.scale_btm.setEnabled(False)
-        hbox.addWidget(self.scale_btm)
         vbox.addLayout(hbox)
 
         # row
@@ -93,37 +89,18 @@ class MeshConfFrame(ConfFrame):
         task = vtk_proc.LoadCgnsTask(self.vtk_processor, filename)
         QtCore.QThreadPool.globalInstance().start(task)
 
-    @QtCore.pyqtSlot()
-    def did_push_scaled_button(self):
-        number = float(self.tr(self.input_text_edit.toPlainText()))
-        if self.scale_mod == 1:
-            print  'scale to exact size: %f!' % number
-        elif self.scale_mod == 2:
-            print  'scale to ratio: %f!' % number
-        else:
-            return
-
     @QtCore.pyqtSlot(int)
     def did_change_scale_mode(self, idx):
         self.scale_mod = idx
-        if idx == 0:
-            self.scale_btm.setEnabled(False)
+        if idx != 3:
             self.input_text_edit.setEnabled(False)
             self.input_text_edit.setText('')
-        elif idx == 1:
-            self.scale_btm.setEnabled(True)
-            self.input_text_edit.setEnabled(True)
-            self.input_text_edit.setText('exact size')
-        elif idx == 2:
-            self.scale_btm.setEnabled(True)
+        else:
             self.input_text_edit.setEnabled(True)
             self.input_text_edit.setText('ratio')
-        else:
-            assert  False
 
     def did_set_mesh_input_dir(self, file_dir):
-        self.input_text_edit.setText(file_dir)
-
+        self.import_dir.setText(file_dir)
 
     def generate_input_card(self):
         return ['']
@@ -153,7 +130,7 @@ class SolverConfFrame(ConfFrame):
         frame_in = QtGui.QFrame()
         frame_in.setFrameStyle(QtGui.QFrame.Sunken | QtGui.QFrame.Box)
         vbox_in = QtGui.QVBoxLayout()
-        vbox_in.addWidget(QtGui.QLabel('Time Step:'))
+        vbox_in.addWidget(QtGui.QLabel('Time'))
         self.transient_based_button = QtGui.QRadioButton('Transient')
         vbox_in.addWidget(self.transient_based_button)
         self.steaady_based_button = QtGui.QRadioButton('Steady')
@@ -183,7 +160,6 @@ class SolverConfFrame(ConfFrame):
         # row
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(QtGui.QPushButton('Edit'))
-        hbox.addWidget(QtGui.QPushButton('Add'))
         vbox.addLayout(hbox)
         self.setLayout(vbox)
 
