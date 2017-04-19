@@ -1,17 +1,10 @@
 import sys
-import logging
-
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
 import vtk_processor as vtk_proc
 import dock_frame
-
-logging.basicConfig(level=logging.DEBUG,
-                format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
-                datefmt='%a, %d %b %Y %H:%M:%S',
-                filename='cycas_gui.log',
-                filemode='w')
+import utility as uti
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self):
@@ -37,13 +30,20 @@ class MainWindow(QtGui.QMainWindow):
 
     def setup_ui(self):
         # init main window
-        # init left dock frames
-        self.left_dock_panels['PartTree'] = dock_frame.PartsTreeFrame()
-        self.left_dock_panels['Solver'] = dock_frame.SolverConfFrame()
-        self.left_dock_panels['Output'] = dock_frame.OutputCOnfFrame()
-        self.left_dock_panels['Mesh'] = dock_frame.MeshConfFrame()
-        self.left_dock_panels['Material'] = dock_frame.MaterialConfFrame()
+        # init vtk
+        self.vtk_processor = vtk_proc.VtkProcessor(self)
 
+        # init left dock frames
+        self.left_dock_panels['PartTree'] = dock_frame.PartsTreeFrame(self.vtk_processor)
+        self.left_dock_panels['Solver'] = dock_frame.SolverConfFrame(self.vtk_processor)
+        self.left_dock_panels['Output'] = dock_frame.OutputConfFrame(self.vtk_processor)
+        self.left_dock_panels['Mesh'] = dock_frame.MeshConfFrame(self.vtk_processor)
+        self.left_dock_panels['Material'] = dock_frame.MaterialConfFrame(self.vtk_processor)
+
+        # connect signal in main window
+        mesh_dock = self.left_dock_panels['PartTree']
+        uti.signal_center.report_part_list_signal.connect(mesh_dock.set_mesh_part_tree_slot)
+        uti.signal_center.clear_parts_signal.connect(mesh_dock.clear_parts_slot)
         # init 2 docks
         dock2 = QtGui.QDockWidget(self.tr("Command Line"), self)
         dock2.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
@@ -66,8 +66,7 @@ class MainWindow(QtGui.QMainWindow):
         dock1.setStyleSheet("QLabel{font-size:13px;font-family:Roman times;}")
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock1)
 
-        # add vtk
-        self.vtk_processor = vtk_proc.VtkProcessor(self)
+        #load vtk frame
         vtk_frame = self.vtk_processor.load_vtk_frame()
         vtk_frame.setMinimumSize(400, 400)
         self.setCentralWidget(vtk_frame)
@@ -75,7 +74,7 @@ class MainWindow(QtGui.QMainWindow):
         # actions
         exit_action = self.new_action('Exit', 'triggered()', QtCore.SLOT('close()'),
                                       icon='icons/exit', short_cut='Ctrl+Q', tip='Exit app')
-        import_mesh_action = self.new_action('Import Mesh', 'triggered()', self.import_mesh,
+        import_mesh_action = self.new_action('Import Mesh', 'triggered()', self.left_dock_panels['Mesh'].import_mesh,
                                              icon='icons/exit.png', short_cut='Ctrl+E', tip='Import CGNS Mesh')
         fit_window_action = self.new_action('Fit Window', 'triggered()', self.vtk_processor.fit_slot,
                                             short_cut = 'Ctrl+F', tip = 'resize the VTK window')
@@ -142,7 +141,7 @@ class MainWindow(QtGui.QMainWindow):
     #slot func
     @QtCore.pyqtSlot(str)
     def update_status_bar_slot(self, content):
-        self.statusBar().showMessage(content)
+        self.statusBar().showMessage(content, 3000)
 
     @QtCore.pyqtSlot(str)
     def log_slot(self, content):
@@ -161,14 +160,6 @@ class MainWindow(QtGui.QMainWindow):
         screen = QtGui.QDesktopWidget().screenGeometry()
         size = self.geometry()
         self.move((screen.width() - size.width()) / 2, (screen.height() - size.height()) / 2)
-
-    # action call backs
-    @QtCore.pyqtSlot()
-    def import_mesh(self):
-        filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
-        self.log_widget.log('loading mesh %s' % filename)
-        task = vtk_proc.LoadCgnsTask(self.vtk_processor)
-        QtCore.QThreadPool.globalInstance().start(task)
 
     @QtCore.pyqtSlot()
     def show_panel(self):

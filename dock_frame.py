@@ -2,26 +2,32 @@ import sys
 import logging
 from PyQt4 import QtGui
 from PyQt4 import QtCore
+import vtk_processor as vtk_proc
+import utility as uti
 
 # utility
 section_header_font_sytle = "QLabel{font-size:13px;font-weight:bold;font-family:Roman times;}"
-
 def insert_section_header(header, vbox):
     la = QtGui.QLabel(header)
     la.setStyleSheet(section_header_font_sytle)
     la.setFixedHeight(15)
     vbox.addWidget(la)
 
-class MaterialConfFrame(QtGui.QFrame):
-    def __init__(self):
-        super(MaterialConfFrame, self).__init__()
+class ConfFrame(QtGui.QFrame):
+    def __init__(self, vtk_processor):
+        super(ConfFrame, self).__init__()
+        self.vtk_processor = vtk_processor
+
+class MaterialConfFrame(ConfFrame):
+    def __init__(self, vtk_processor):
+        super(MaterialConfFrame, self).__init__(vtk_processor)
 
     def generate_input_card(self):
         return ['']
 
-class MeshConfFrame(QtGui.QFrame):
-    def __init__(self):
-        super(MeshConfFrame, self).__init__()
+class MeshConfFrame(ConfFrame):
+    def __init__(self, vtk_processor):
+        super(MeshConfFrame, self).__init__(vtk_processor)
         self.setFixedWidth(300)
         vbox = QtGui.QVBoxLayout()
         self.scale_mod = 0  # 0 -- no scale, 1 -- exact size, 2 -- scale ratio
@@ -30,6 +36,7 @@ class MeshConfFrame(QtGui.QFrame):
         hbox = QtGui.QHBoxLayout()
         btm = QtGui.QPushButton('Import Mesh')
         btm.setFixedSize(100, 30)
+        btm.clicked.connect(self.import_mesh)
         hbox.addWidget(btm)
         te = QtGui.QTextEdit()
         te.setReadOnly(True)
@@ -78,6 +85,14 @@ class MeshConfFrame(QtGui.QFrame):
         vbox.addStretch()
         self.setLayout(vbox)
 
+    def import_mesh(self):
+        filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
+        filename = './moxing1.cgns'
+        uti.signal_center.log_signal.emit('loading mesh %s' % filename)
+        self.did_set_mesh_input_dir(filename)
+        task = vtk_proc.LoadCgnsTask(self.vtk_processor, filename)
+        QtCore.QThreadPool.globalInstance().start(task)
+
     @QtCore.pyqtSlot()
     def did_push_scaled_button(self):
         number = float(self.tr(self.input_text_edit.toPlainText()))
@@ -106,13 +121,17 @@ class MeshConfFrame(QtGui.QFrame):
         else:
             assert  False
 
+    def did_set_mesh_input_dir(self, file_dir):
+        self.input_text_edit.setText(file_dir)
+
+
     def generate_input_card(self):
         return ['']
 
 
-class SolverConfFrame(QtGui.QFrame):
-    def __init__(self):
-        super(SolverConfFrame, self).__init__()
+class SolverConfFrame(ConfFrame):
+    def __init__(self, vtk_processor):
+        super(SolverConfFrame, self).__init__(vtk_processor)
         self.setFixedWidth(300)
         self.models = {'Energy Equation':None,
                        'Viscid Model':None,
@@ -171,15 +190,15 @@ class SolverConfFrame(QtGui.QFrame):
     def generate_input_card(self):
         return ['']
 
-class PartsTreeFrame(QtGui.QFrame):
-    def __init__(self):
-        super(PartsTreeFrame, self).__init__()
+class PartsTreeFrame(ConfFrame):
+    def __init__(self, vtk_processor):
+        super(PartsTreeFrame, self).__init__(vtk_processor)
         self.setFixedWidth(300)
         vbox = QtGui.QVBoxLayout()
         self.setLayout(vbox)
         self.dict_tree = {'Boundary Parts':{}, 'Volume Parts':{}}
-        self.vtk_processor = None #set later by processor
         tree_widget = QtGui.QTreeWidget()
+        tree_widget.setMouseTracking(True)
         vbox.addWidget(tree_widget)
         tree_widget.setColumnCount(1)
         tree_widget.setHeaderLabel('Mesh-Tree')
@@ -216,6 +235,7 @@ class PartsTreeFrame(QtGui.QFrame):
 
         tree_widget.itemChanged.connect(self.item_changed_slot)
         tree_widget.itemDoubleClicked.connect(self.item_double_clicked_slot)
+        tree_widget.itemEntered.connect(self.item_entered_slot)
 
     @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
     def item_changed_slot(self, item, column):
@@ -226,10 +246,8 @@ class PartsTreeFrame(QtGui.QFrame):
 
         if item.checkState(column) == QtCore.Qt.Checked:
             self.vtk_processor.activate_parts([part_name])
-            #self.vtk_processor.center_on_part_slot(part_name)
         elif item.checkState(column) == QtCore.Qt.Unchecked:
             self.vtk_processor.deactivate_parts([part_name])
-            #self.vtk_processor.fit_signal.emit()
         else:
             assert False
 
@@ -240,19 +258,25 @@ class PartsTreeFrame(QtGui.QFrame):
         if part_name not in self.dict_tree['Boundary Parts'].keys() and \
                         part_name not in self.dict_tree['Volume Parts'].keys():
             return
-        if part_name in self.dict_tree['Volume Parts']:
+        if part_name in self.dict_tree['Volume Parts'].keys():
             self.vtk_processor.fit_slot()
         else:
             self.vtk_processor.focus_on_part_slot(part_name)
 
+    @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
+    def item_entered_slot(self, item, column):
+        if column != 0: return
+        part_name = str(item.text(column))
+        if part_name in self.dict_tree['Boundary Parts'].keys():
+            uti.signal_center.update_status_signal.emit('double click to focus on part: %s' %  part_name)
+
     @QtCore.pyqtSlot(dict)
     def set_mesh_part_tree_slot(self, dic):
-        print 'message received', dic
         for root_name, part_names in dic.iteritems():
             rt = self.tree_widget.findItems(root_name, QtCore.Qt.MatchExactly)[0]
             for name in part_names:
-                assert name not in self.dict_tree[root_name] # fail when boundary part has the same name
-                self.dict_tree[root_name][name] = None
+                assert name not in self.dict_tree[root_name].keys() # fail when boundary part has the same name
+                self.dict_tree[root_name][name] = {}
                 it = QtGui.QTreeWidgetItem(rt)
                 it.setText(0, name)
                 if  root_name == 'Volume Parts':
@@ -270,9 +294,9 @@ class PartsTreeFrame(QtGui.QFrame):
         return ['']
 
 
-class OutputCOnfFrame(QtGui.QFrame):
-    def __init__(self):
-        super(OutputCOnfFrame, self).__init__()
+class OutputConfFrame(ConfFrame):
+    def __init__(self, vtk_processor):
+        super(OutputConfFrame, self).__init__(vtk_processor)
         vbox = QtGui.QVBoxLayout()
         vbox.addLayout(self.line_factory())
         vbox.addLayout(self.line_factory())

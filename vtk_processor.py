@@ -1,17 +1,12 @@
 import vtk
-import logging
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
+import utility as uti
+
 class VtkProcessor(QtCore.QObject):
-    update_progress_bar_signal = QtCore.pyqtSignal(int)
-    update_status_signal = QtCore.pyqtSignal(str)
-    log_signal = QtCore.pyqtSignal(str)
-    report_part_list_signal = QtCore.pyqtSignal(dict)
-    clear_parts_signal = QtCore.pyqtSignal()
-    render_signal = QtCore.pyqtSignal()
-    fit_signal = QtCore.pyqtSignal()
+
     def __init__(self, main_window):
         super(VtkProcessor, self).__init__()
         self.vtk_frame = None
@@ -23,16 +18,14 @@ class VtkProcessor(QtCore.QObject):
         self.ug_mapper_actor = {}
 
         #register signal
-        self.update_progress_bar_signal.connect(main_window.udpate_progress_bar_slot)
-        self.update_status_signal.connect(main_window.update_status_bar_slot)
-        self.log_signal.connect(main_window.log_slot)
+        uti.signal_center.update_progress_bar_signal.connect(main_window.udpate_progress_bar_slot)
+        uti.signal_center.update_status_signal.connect(main_window.update_status_bar_slot)
+        uti.signal_center.log_signal.connect(main_window.log_slot)
         self.part_info = {}
-        self.render_signal.connect(self.render_slot)
-        mesh_dock = main_window.left_dock_panels['PartTree']
-        self.report_part_list_signal.connect(mesh_dock.set_mesh_part_tree_slot)
-        self.clear_parts_signal.connect(mesh_dock.clear_parts_slot)
-        self.fit_signal.connect(self.fit_slot)
-        mesh_dock.vtk_processor = self
+
+        # connect signal
+        uti.signal_center.render_signal.connect(self.render_slot)
+        uti.signal_center.fit_signal.connect(self.fit_slot)
 
     def load_vtk_frame(self):
         # vtk
@@ -75,7 +68,7 @@ class VtkProcessor(QtCore.QObject):
         vtk_frame.setLayout(vtk_boxlayout)
         self.part_info['Sample Sphere'] = {'center': source.GetCenter()}
         self.ug_mapper_actor['Sample Sphere'] = (source, mapper, actor)
-        self.report_part_list_signal.emit({'Volume Parts':['Sample Sphere'], 'Boundary Parts':list()})
+        uti.signal_center.report_part_list_signal.emit({'Volume Parts':['Sample Sphere'], 'Boundary Parts':list()})
 
 
         # add to properties
@@ -89,20 +82,20 @@ class VtkProcessor(QtCore.QObject):
         for name in part_name_list:
             f, m, a = self.ug_mapper_actor[name]
             self.vtk_ren.AddActor(a)
-        self.render_signal.emit()
+        uti.signal_center.render_signal.emit()
 
     def deactivate_parts(self, part_name_list):
         for name in part_name_list:
             f, m, a = self.ug_mapper_actor[name]
             self.vtk_ren.RemoveActor(a)
-        self.render_signal.emit()
+        uti.signal_center.render_signal.emit()
 
     def clear(self):
         for part_name, (filter, mapper, actor) in self.ug_mapper_actor.iteritems():
             self.vtk_ren.RemoveActor(actor)
         self.ug_mapper_actor = {}
         self.part_info = {}
-        self.clear_parts_signal.emit()
+        uti.signal_center.clear_parts_signal.emit()
 
     @QtCore.pyqtSlot()
     def render_slot(self):
@@ -111,7 +104,7 @@ class VtkProcessor(QtCore.QObject):
     @QtCore.pyqtSlot()
     def fit_slot(self):
         self.vtk_ren.ResetCamera()
-        self.render_signal.emit()
+        uti.signal_center.render_signal.emit()
 
     @QtCore.pyqtSlot(str)
     def focus_on_part_slot(self, part_name):
@@ -119,33 +112,30 @@ class VtkProcessor(QtCore.QObject):
         camera = self.vtk_ren.GetActiveCamera()
         camera.SetFocalPoint(center)
         camera.ComputeViewPlaneNormal()
-        self.render_signal.emit()
-
-
+        uti.signal_center.render_signal.emit()
 
 # background task
 class LoadCgnsTask(QtCore.QRunnable):
-    def __init__(self, vtkproc):
+    def __init__(self, vtkproc, name):
         super(LoadCgnsTask, self).__init__()
         self.vtk_processor = vtkproc
+        self.file_name = name
 
     def run(self):
         # clear existing part
         self.vtk_processor.clear()
+        print 'in thread'
         import cgns_reader
         cgns_reader.init()
-        cgns_reader.progress_signal = self.vtk_processor.update_progress_bar_signal
-        cgns_reader.read_file('moxing1.cgns')
-        self.vtk_processor.log_signal.emit('number of vertices: %d \n number of parts: %d \n number of elements: %d'
+        cgns_reader.read_file(self.file_name)
+        uti.signal_center.log_signal.emit('number of vertices: %d \n number of parts: %d \n number of elements: %d'
                            % (cgns_reader.nvert, cgns_reader.nsection, cgns_reader.nelement))
-        self.vtk_processor.log_signal.emit('found parts: %s' % str(cgns_reader.part_offset_dict.keys()))
+        uti.signal_center.log_signal.emit('found parts: %s' % str(cgns_reader.part_offset_dict.keys()))
         v_part = set()
         b_part = set()
         for part_name, cell_array, cell_type_array in cgns_reader.get_parts():
             ug = vtk.vtkUnstructuredGrid()
             ug.SetPoints(cgns_reader.points)
-            self.vtk_processor.log_signal.emit('processing part:%s' % part_name)
-            self.vtk_processor.update_status_signal.emit('loading mesh part: %s... please wait' % part_name)
             ug.SetCells(cell_type_array, cell_array)
             self.vtk_processor.part_info[part_name] = {'center' : cgns_reader.center_points[part_name]}
             if vtk.VTK_TRIANGLE in cell_type_array or vtk.VTK_QUAD in cell_type_array:
@@ -160,10 +150,10 @@ class LoadCgnsTask(QtCore.QRunnable):
             mapper.SetInputData(ug)
             actor.GetProperty().SetRepresentationToWireframe()
 
-        self.vtk_processor.report_part_list_signal.emit({'Volume Parts':list(v_part), 'Boundary Parts':list(b_part)})
         # Create Filter
-        self.vtk_processor.render_signal.emit()
+        uti.signal_center.report_part_list_signal.emit({'Volume Parts':list(v_part), 'Boundary Parts':list(b_part)})
+        uti.signal_center.render_signal.emit()
+        uti.signal_center.update_status_signal.emit('done')
         self.vtk_processor.vtk_ren.ResetCamera()
-        self.vtk_processor.update_status_signal.emit('done')
         cgns_reader.deinit()
 

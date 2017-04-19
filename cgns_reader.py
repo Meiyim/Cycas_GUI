@@ -1,7 +1,8 @@
 import ctypes as ct
-import numpy as np
 import vtk
 import platform
+
+import  utility as uti
 
 
 class CGNSException(Exception):
@@ -44,7 +45,9 @@ points = None #vtk point set
 center_points = {}
 
 # delegate
-progress_signal = None
+progress_signal = uti.signal_center.update_progress_bar_signal
+log_signal = uti.signal_center.log_signal
+status_signal = uti.signal_center.update_status_signal
 
 def init():
     global cgns_reader_module
@@ -120,6 +123,10 @@ def get_parts():
         cell_type_array = []
         cell_array = vtk.vtkCellArray()
         cell_array.SetNumberOfCells(iend - istart)
+        # log
+        if log_signal is not None: log_signal.emit('processing part:%s' % part_name)
+        if status_signal is not None: status_signal.emit('loading mesh part: %s... please wait' % part_name)
+
         for idx in xrange(istart, iend):
             if (idx % ((iend - istart) / 100)) == 0 and progress_signal is not None:
                 progress_signal.emit(int(idx / ((iend - istart) / 100)))
