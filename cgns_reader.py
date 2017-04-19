@@ -19,6 +19,7 @@ def check(ret):
 
 def set_vert_type(vtype):
     cgns_reader_module.read_verts.argtypes = [vtype, vtype, vtype]
+    cgns_reader_module.get_part_center.argtypes = [vtype, vtype, vtype]
 
 vtk_npe = {vtk.VTK_TETRA:4,
        vtk.VTK_QUAD:4,
@@ -26,18 +27,21 @@ vtk_npe = {vtk.VTK_TETRA:4,
        vtk.VTK_HEXAHEDRON:8,
        vtk.VTK_WEDGE:6,
        vtk.VTK_PYRAMID:5}
+
 # type alias
 uint_p = ct.POINTER(ct.c_size_t)
 int_p = ct.POINTER(ct.c_int)
 double_p = ct.POINTER(ct.c_double)
 
+# global
 cgns_reader_module = None
 nvert = None
 nsection = None
 nelement = None
 part_offset_dict = {} #partname: (ielementstart, ielementend, buffer_length)
-elements = None
-points = None
+elements = None # self defined data type Element
+points = None #vtk point set
+center_points = {}
 
 # delegate
 progress_signal = None
@@ -55,6 +59,7 @@ def init():
     cgns_reader_module.read_verts.restype = ct.c_int
     cgns_reader_module.read_element.argtypes = [ct.POINTER(ct.c_char_p), ct.POINTER(uint_p), ct.POINTER(ct.POINTER(Element)) ]
     cgns_reader_module.read_element.restype = ct.c_int
+    cgns_reader_module.get_part_center.restype = ct.c_int
     cgns_reader_module.finalize.argtypes = []
     cgns_reader_module.finalize.restype = ct.c_int
 
@@ -64,23 +69,38 @@ def read_file(filename):
     nsec = ct.c_size_t()
     nelem = ct.c_size_t()
     type_flag = ct.c_int()
+
+    # call c function
     check(cgns_reader_module.read_file(filename, ct.byref(nv), ct.byref(nsec), ct.byref(nelem), ct.byref(type_flag)))
     xcord = None
     ycord = None
     zcord = None
+    xcenter = None
+    ycenter = None
+    zcenter = None
     if type_flag.value == 0:
         xcord = double_p()
         ycord = double_p()
         zcord = double_p()
+        xcenter = double_p()
+        ycenter = double_p()
+        zcenter = double_p()
         set_vert_type(ct.POINTER(double_p))
-        check(cgns_reader_module.read_verts(ct.byref(xcord), ct.byref(ycord), ct.byref(zcord)))
     else:
         assert False
+    # call c function
+    check(cgns_reader_module.read_verts(ct.byref(xcord), ct.byref(ycord), ct.byref(zcord)))
+
+    # call c function
     part_name_p = ct.c_char_p()
     part_offset_p = uint_p()
     elem_p = ct.POINTER(Element)()
-    check( cgns_reader_module.read_element(ct.byref(part_name_p), ct.byref(part_offset_p), ct.byref(elem_p)) )
-    global nvert, nsection, nelement, part_offset_dict, elements, points
+    check(cgns_reader_module.read_element(ct.byref(part_name_p), ct.byref(part_offset_p), ct.byref(elem_p)) )
+
+    # call c function
+    check(cgns_reader_module.get_part_center(ct.byref(xcenter), ct.byref(ycenter), ct.byref(zcenter), type_flag))
+
+    global nvert, nsection, nelement, part_offset_dict, elements, points, center_points
     nvert = nv.value
     nsection = nsec.value
     nelement = nelem.value
@@ -88,6 +108,8 @@ def read_file(filename):
     for i in xrange(1, nsection + 1):
         part_offset_dict[part_name_list[i]] = (part_offset_p[i-1], part_offset_p[i])
     print part_offset_dict
+    for i in xrange(1, nsection + 1):
+        center_points[part_name_list[i]] = (xcenter[i-1], ycenter[i-1], zcenter[i-1])
     elements = elem_p
     points = vtk.vtkPoints()
     for i in xrange(0, nvert):

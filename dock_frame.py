@@ -215,6 +215,7 @@ class PartsTreeFrame(QtGui.QFrame):
         hbox.addWidget(edit_button)
 
         tree_widget.itemChanged.connect(self.item_changed_slot)
+        tree_widget.itemDoubleClicked.connect(self.item_double_clicked_slot)
 
     @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
     def item_changed_slot(self, item, column):
@@ -225,10 +226,24 @@ class PartsTreeFrame(QtGui.QFrame):
 
         if item.checkState(column) == QtCore.Qt.Checked:
             self.vtk_processor.activate_parts([part_name])
+            #self.vtk_processor.center_on_part_slot(part_name)
         elif item.checkState(column) == QtCore.Qt.Unchecked:
             self.vtk_processor.deactivate_parts([part_name])
+            #self.vtk_processor.fit_signal.emit()
         else:
             assert False
+
+    @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
+    def item_double_clicked_slot(self, item, column):
+        if column != 0: return
+        part_name = str(item.text(column))
+        if part_name not in self.dict_tree['Boundary Parts'].keys() and \
+                        part_name not in self.dict_tree['Volume Parts'].keys():
+            return
+        if part_name in self.dict_tree['Volume Parts']:
+            self.vtk_processor.fit_slot()
+        else:
+            self.vtk_processor.focus_on_part_slot(part_name)
 
     @QtCore.pyqtSlot(dict)
     def set_mesh_part_tree_slot(self, dic):

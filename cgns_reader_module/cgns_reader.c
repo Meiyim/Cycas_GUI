@@ -30,6 +30,9 @@ static cgsize_t nelem = 0;
 static void* global_xcord = NULL;
 static void* global_ycord = NULL;
 static void* global_zcord = NULL;
+static void* global_xcenter = NULL;
+static void* global_ycenter = NULL;
+static void* global_zcenter = NULL;
 static Element* global_elem_list = NULL;
 static char* global_part_name = NULL;
 static size_t* global_part_offset = NULL;
@@ -38,6 +41,7 @@ static DataType_t cord_datatype;
 DLL_EXPORT int read_file(const char*, size_t*, size_t*, size_t*, int*);
 DLL_EXPORT int read_verts(void**, void**, void**);
 DLL_EXPORT int read_element(char**, size_t**, Element**);
+DLL_EXPORT int get_part_center(void** centerx, void** centery, void** centerz, int type_flag);
 DLL_EXPORT int finalize();
 
 int vtk_type(ElementType_t cgns_type, int* gmsh_type){
@@ -201,12 +205,47 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
         part_offset_iter[isec] = part_offset_iter[isec - 1] + nelem_sec;
         free(pid);
     }
-	for (int i = 0; i != nsection + 1; ++i) {
-		printf("offset in c %u\n", part_offset_iter[i]);
-	}
     global_elem_list = *elem_list;
     global_part_offset = *part_offset;
     global_part_name = *part_name;
+    return 0;
+}
+
+
+
+int get_part_center(void** centerx, void** centery, void** centerz, int type_flag){
+    if (type_flag == 0) {
+        *centerx = malloc(nsection * sizeof(double));
+        *centery = malloc(nsection * sizeof(double));
+        *centerz = malloc(nsection * sizeof(double));
+        double* xc = (double*) (*centerx);
+        double* yc = (double*) (*centery);
+        double* zc = (double*) (*centerz);
+        double* x  = (double*) global_xcord;
+        double* y  = (double*) global_ycord;
+        double* z  = (double*) global_zcord;
+        for (int isec = 0; isec != nsection; ++ isec) {
+            xc[isec] = 0.;
+            yc[isec] = 0.;
+            zc[isec] = 0.;
+            for (int i = global_part_offset[isec]; i != global_part_offset[isec + 1]; ++i) {
+                size_t idx = global_elem_list[i].pid[0];
+                xc[isec] += x[idx];
+                yc[isec] += y[idx];
+                zc[isec] += z[idx];
+            }
+            size_t nelem_sec = global_part_offset[isec+1] - global_part_offset[isec];
+            xc[isec] /= nelem_sec;
+            yc[isec] /= nelem_sec;
+            zc[isec] /= nelem_sec;
+        }
+    }else {
+        assert(0);
+        return -1;
+    }
+    global_xcenter = *centerx;
+    global_ycenter = *centery;
+    global_zcenter = *centerz;
     return 0;
 }
 
@@ -217,6 +256,9 @@ int finalize(){
     free(global_elem_list);
     free(global_part_offset);
     free(global_part_name);
+    free(global_xcenter);
+    free(global_ycenter);
+    free(global_zcenter);
     ERROR_CHECK(cg_close(cgns_file));
     return 0;
 }
