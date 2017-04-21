@@ -1,5 +1,9 @@
 import sys
 import logging
+import subprocess as sp
+import os
+import shutil
+
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 import vtk_processor as vtk_proc
@@ -287,6 +291,41 @@ class OutputConfFrame(ConfFrame):
         ret.addWidget(content)
         return ret
 
+
+class CycasTracker(QtCore.QObject):
+    def __init__(self):
+        super(CycasTracker, self).__init__()
+        self.notifier = None
+        self.cycas_dir = None
+        self.task = None
+        self.logfile = None
+        self.task_dir = None
+
+    def start_solver(self, task_name, param, mesh_dir, **kwargs):
+        cwd = os.getcwd()
+        self.task_dir = os.makedirs(os.path.join(cwd, 'cycas_' + task_name))
+        if kwargs.get('not_copy_mesh') is None:
+            shutil.move(mesh_dir, self.task_dir)
+        shutil.copy(self.cycas_dir, self.task_dir)
+
+        input_pard = open(os.path.join(self.task_dir, 'inp.inp'), 'w')
+        input_pard.write(param)
+
+        self.logfile = open(os.path.join(self.task_dir, 'out'), 'w')
+        self.task = sp.Popen(['./cycas'], stdout=self.logfile)
+
+        fd = os.open(self.logfile.name, os.O_RDONLY)
+        self.notifier = QtCore.QSocketNotifier(fd, QtCore.QSocketNotifier.Read)
+        self.notifier.activated.connect(self.log_update_slot)
+        self.notifier.setEnabled(True)
+
+    @QtCore.pyqtSlot(int)
+    def log_update_slot(self, fd):
+        while True:
+            data = os.read(fd, 1024)
+            if not data:
+                break
+            print 'data read %s' % repr(data)
 
 class CommandlineWidget(QtGui.QTextEdit):
     def __init__(self, content):

@@ -21,3 +21,5 @@ class SignalCenter(QtCore.QObject):
 # gloabl
 signal_center = SignalCenter()
 
+
+

@@ -1,4 +1,5 @@
 import sys
+import os
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
@@ -109,8 +110,12 @@ class MainWindow(QtGui.QMainWindow):
         self.addToolBar('Mesh Config').addAction(self.action_dict['Mesh'])
         self.addToolBar('Solver Config').addAction(self.action_dict['Solver'])
         self.addToolBar('Material Config').addAction(self.action_dict['Material'])
-        self.addToolBar('Output Config').addAction(self.action_dict['Output'])
         self.addToolBar('Boundary Config').addAction(self.action_dict['Boundary'])
+        self.addToolBar('Output Config').addAction(self.action_dict['Output'])
+
+        # test work
+        self.cycas = dock_frame.CycasTracker()
+
 
     def new_action(self, title, signal, slot_func, **kwargs):
         if kwargs.get('icon') is None:
