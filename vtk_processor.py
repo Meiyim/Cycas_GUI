@@ -90,6 +90,12 @@ class VtkProcessor(QtCore.QObject):
             self.vtk_ren.RemoveActor(a)
         uti.signal_center.render_signal.emit()
 
+    def set_part_color(self, part_name, color):
+        u, m, a = self.ug_mapper_actor[part_name]
+        a.GetProperty().SetColor(color[0], color[1], color[2])
+        print 'color set', color, part_name
+        uti.signal_center.render_signal.emit()
+
     def clear(self):
         for part_name, (filter, mapper, actor) in self.ug_mapper_actor.iteritems():
             self.vtk_ren.RemoveActor(actor)

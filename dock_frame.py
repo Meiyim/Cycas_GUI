@@ -8,6 +8,7 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 import vtk_processor as vtk_proc
 import utility as uti
+import dialogs as dia
 
 # utility
 section_header_font_sytle = "QLabel{font-size:13px;font-weight:bold;font-family:Roman times;}"
@@ -25,6 +26,30 @@ class ConfFrame(QtGui.QFrame):
 class MaterialConfFrame(ConfFrame):
     def __init__(self, vtk_processor):
         super(MaterialConfFrame, self).__init__(vtk_processor)
+        self.setFixedWidth(300)
+        vbox = QtGui.QVBoxLayout()
+
+        self.tree = QtGui.QTreeWidget(self)
+        self.tree.setMouseTracking(True)
+        self.tree.setColumnCount(1)
+        self.tree.setHeaderLabel('Materials')
+        vbox.addWidget(self.tree)
+
+        self.root_solid = QtGui.QTreeWidgetItem(self.tree)
+        self.root_solid.setText(0, 'Solid Material')
+        self.root_liquid = QtGui.QTreeWidgetItem(self.tree)
+        self.root_liquid.setText(0, 'Liquid Material')
+        self.tree.addTopLevelItem(self.root_solid)
+        self.tree.addTopLevelItem(self.root_liquid)
+
+        btm = QtGui.QPushButton('Add')
+        btm.clicked.connect(self.add_material_slot)
+        vbox.addWidget(btm)
+        self.setLayout(vbox)
+
+    @QtCore.pyqtSlot()
+    def add_material_slot(self):
+        pass
 
     def generate_input_card(self):
         return ['']
@@ -114,9 +139,15 @@ class SolverConfFrame(ConfFrame):
     def __init__(self, vtk_processor):
         super(SolverConfFrame, self).__init__(vtk_processor)
         self.setFixedWidth(300)
-        self.models = {'Energy Equation':None,
-                       'Viscid Model':None,
-                       'Speciecs':None}
+        self.models = {'Energy Equation': {'desc': 'off', 'enabled': False},
+                       'Viscid Model': {'desc': '','submodel':{
+                            'k-epsilon':{'desc': 'off'},
+                            'k-omiga':{'desc': 'off'},
+                            },
+                            'enabled': -1, #enabled idx
+                       },
+                       'Speciecs': {'desc': 'off', 'enabled': False},
+        }
         vbox = QtGui.QVBoxLayout()
         #row
         insert_section_header('Solver Config', vbox)
@@ -146,31 +177,57 @@ class SolverConfFrame(ConfFrame):
         insert_section_header('Gravity Vector', vbox)
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(QtGui.QLabel('Gx, Gy, Gz ='))
-        te = QtGui.QTextEdit('0., 0., 0.')
+        #te = QtGui.QTextEdit(self)
+        te = dia.VectorInputor()
         te.setFixedSize(200, 30)
         hbox.addWidget(te)
         vbox.addLayout(hbox)
         # row
         insert_section_header('Model Selection',vbox)
-        self.table = QtGui.QTableWidget(len(self.models), 2)
-        self.table.setHorizontalHeaderLabels(['Model', 'Description'])
-        self.table.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-        self.table.setColumnWidth(0, 120)
-        self.table.setColumnWidth(1, 140)
-        for idx, model in enumerate(self.models.keys()):
-            it = QtGui.QTableWidgetItem(model, 0) # table-type 0
-            self.table.setItem(idx, 0, it)
-        vbox.addWidget(self.table)
+        self.tree = QtGui.QTreeWidget(self)
+        self.tree.setMouseTracking(True)
+        self.tree.setColumnCount(2)
+        self.tree.setColumnWidth(0, 150)
+        self.tree.setHeaderLabels(['Models', 'Description'])
+        vbox.addWidget(self.tree)
+        self.update_tree()
         # row
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(QtGui.QPushButton('Edit'))
         vbox.addLayout(hbox)
         self.setLayout(vbox)
 
+    def update_tree(self):
+        for model, info in self.models.iteritems():
+            it = QtGui.QTreeWidgetItem(self.tree)
+            it.setText(0, model)
+            it.setText(1, info['desc'])
+            if info['enabled'] is True:
+                it.setCheckState(0, QtCore.Qt.Checked)
+            else:
+                it.setCheckState(0, QtCore.Qt.Unchecked)
+            self.tree.addTopLevelItem(it)
+            if info.get('submodel') is not None:
+                for idx, (submodel, subinfo) in enumerate(info['submodel'].iteritems()):
+                    subit = QtGui.QTreeWidgetItem(it)
+                    subit.setText(0, submodel)
+                    subit.setText(1, subinfo['desc'])
+                    if idx == info['enabled']:
+                        subit.setCheckState(0, QtCore.Qt.Checked)
+                    else:
+                        subit.setCheckState(0, QtCore.Qt.Unchecked)
+
     def generate_input_card(self):
         return ['']
 
 class PartsTreeFrame(ConfFrame):
+    class BoundaryType(object):
+        UNDEFINED=-1
+        WALL  = 0
+        INLET = 1
+        OUTLET= 2
+        SYMMETRY=3
+        PERIODIC=5
     def __init__(self, vtk_processor):
         super(PartsTreeFrame, self).__init__(vtk_processor)
         self.setFixedWidth(300)
@@ -180,8 +237,9 @@ class PartsTreeFrame(ConfFrame):
         tree_widget = QtGui.QTreeWidget()
         tree_widget.setMouseTracking(True)
         vbox.addWidget(tree_widget)
-        tree_widget.setColumnCount(1)
-        tree_widget.setHeaderLabel('Mesh-Tree')
+        tree_widget.setColumnCount(2)
+        tree_widget.setHeaderLabels(['Parts', 'Type'])
+        tree_widget.setColumnWidth(0, 150)
         it1 = QtGui.QTreeWidgetItem(tree_widget)
         it1.setText(0, 'Volume Parts')
         #it1.setCheckState(QtGui.QTreeWidgetItem.Checked)
@@ -201,24 +259,42 @@ class PartsTreeFrame(ConfFrame):
         hbox = QtGui.QHBoxLayout()
         vbox.addLayout(hbox)
         combo_box = QtGui.QComboBox()
+        self.combo_box = combo_box
         combo_box.setFixedSize(180, 28)
         combo_box.setEnabled(False)
         hbox.addWidget(combo_box)
         edit_button = QtGui.QPushButton("Edit")
+        self.edit_btm = edit_button
         combo_box.addItem('Boundary Type')
-        combo_box.addItem('Inlet')
-        combo_box.addItem('Outlet')
-        combo_box.addItem('Wall')
-        combo_box.addItem('Symmetric')
-        combo_box.addItem('Periodic')
+        combo_box.addItem('Wall') # --0
+        combo_box.addItem('Inlet')# --1
+        combo_box.addItem('Outlet')# --2
+        combo_box.addItem('Symmetric') # --3
+        combo_box.addItem('Periodic') # --4
         hbox.addWidget(edit_button)
 
         tree_widget.itemChanged.connect(self.item_changed_slot)
         tree_widget.itemDoubleClicked.connect(self.item_double_clicked_slot)
         tree_widget.itemEntered.connect(self.item_entered_slot)
+        tree_widget.itemClicked.connect(self.item_clicked_slot)
 
+        combo_box.currentIndexChanged.connect(self.did_set_bc_type)
+
+        edit_button.clicked.connect(self.did_push_edit_btm)
+
+    def switch_to_part(self, part_name):
+        info = self.dict_tree['Boundary Parts'][part_name]
+        if info.get('type') is None:
+            self.combo_box.setCurrentIndex(0)
+            self.edit_btm.setEnabled(False)
+        else:
+            self.combo_box.setCurrentIndex(info['type'])
+            self.edit_btm.setEnabled(True)
+
+    # tree widget
     @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
     def item_changed_slot(self, item, column):
+        if column != 0: return
         part_name = str(item.text(column))
         if part_name not in self.dict_tree['Boundary Parts'].keys() and \
            part_name not in self.dict_tree['Volume Parts'].keys():
@@ -244,12 +320,70 @@ class PartsTreeFrame(ConfFrame):
             self.vtk_processor.focus_on_part_slot(part_name)
 
     @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
+    def item_clicked_slot(self, item, column):
+        part_name = str(item.text(0))
+        if part_name in self.dict_tree['Boundary Parts']:
+            self.combo_box.setEnabled(True)
+            self.switch_to_part(part_name)
+        else:
+            self.combo_box.setEnabled(False)
+
+    @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
     def item_entered_slot(self, item, column):
         if column != 0: return
         part_name = str(item.text(column))
         if part_name in self.dict_tree['Boundary Parts'].keys():
             uti.signal_center.update_status_signal.emit('double click to focus on part: %s' %  part_name)
 
+    # combo box
+    @QtCore.pyqtSlot(int)
+    def did_set_bc_type(self, idx):
+        item = self.tree_widget.currentItem()
+        part_name = str(item.text(0))
+        if idx == 0:
+            self.dict_tree['Boundary Parts'][part_name]['type'] = None
+        else:
+            self.dict_tree['Boundary Parts'][part_name]['type'] = idx
+        if idx == 0 :
+            self.edit_btm.setEnabled(False)
+            self.vtk_processor.set_part_color(part_name, (1., 1., 1.))
+            item.setText(1, '')
+        else:
+            self.edit_btm.setEnabled(True)
+            if idx == 1:
+                self.vtk_processor.set_part_color(part_name, (0.0, 0.0, 1.0))
+                item.setText(1, 'WALL')
+            elif idx == 2:
+                self.vtk_processor.set_part_color(part_name, (0.0, 1.1, 0.0))
+                item.setText(1, 'INLET')
+            elif idx == 3:
+                self.vtk_processor.set_part_color(part_name, (1., 0., 0.))
+                item.setText(1, 'OUTLET')
+            elif idx == 4:
+                self.vtk_processor.set_part_color(part_name, (1., 1., 0.))
+                item.setText(1, 'SYMMETRY')
+            elif idx == 5:
+                self.vtk_processor.set_part_color(part_name, (0., 1., 1.))
+                item.setText(1, 'PERIODIC')
+
+    # push bottom
+    @QtCore.pyqtSlot()
+    def did_push_edit_btm(self):
+        bc_type = self.combo_box.currentIndex()
+        bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary')
+        bc_dialog.accepted.connect(self.did_finish_dialog)
+        bc_dialog.exec_() # blocking call
+
+    # dialog
+    def did_finish_dialog(self):
+        dialog = self.sender()
+        item = self.tree_widget.currentItem()
+        part_name = str(item.text())
+        if dialog.info is not None:
+            self.dict_tree['Boundary Parts'][part_name]['vec'] = dialog.info
+            print 'getting info from dialog'
+
+    # self define
     @QtCore.pyqtSlot(dict)
     def set_mesh_part_tree_slot(self, dic):
         for root_name, part_names in dic.iteritems():
