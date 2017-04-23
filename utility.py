@@ -15,10 +15,6 @@ class SignalCenter(QtCore.QObject):
     clear_parts_signal = QtCore.pyqtSignal()
     render_signal = QtCore.pyqtSignal()
     fit_signal = QtCore.pyqtSignal()
-<<<<<<< HEAD
-    start_vtk_signal = QtCore.pyqtSignal()
-=======
->>>>>>> e00191bdcbf36aa98c443d57bf9bb0d9759393e8
     def __init__(self):
         super(SignalCenter, self).__init__()
 
