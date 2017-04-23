@@ -1,10 +1,11 @@
 import sys
+import os
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
 import vtk_processor as vtk_proc
 import dock_frame
-
+import utility as uti
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self):
@@ -16,7 +17,7 @@ class MainWindow(QtGui.QMainWindow):
         # insert properties
         self.dock_left = None
         self.dock_bottom = None
-        self.actor_dict = {}
+        self.action_dict = {}
         self.left_dock_panels = {}
         self.progress_bar = None
         self.log_widget = None
@@ -30,10 +31,20 @@ class MainWindow(QtGui.QMainWindow):
 
     def setup_ui(self):
         # init main window
-        # init left dock frames
-        self.left_dock_panels['mesh_conf'] = dock_frame.LeftDockFrame()
-        self.left_dock_panels['output_conf'] = dock_frame.LeftDockFrame2()
+        # init vtk
+        self.vtk_processor = vtk_proc.VtkProcessor(self)
 
+        # init left dock frames
+        self.left_dock_panels['Boundary'] = dock_frame.PartsTreeFrame(self.vtk_processor)
+        self.left_dock_panels['Solver'] = dock_frame.SolverConfFrame(self.vtk_processor)
+        self.left_dock_panels['Output'] = dock_frame.OutputConfFrame(self.vtk_processor)
+        self.left_dock_panels['Mesh'] = dock_frame.MeshConfFrame(self.vtk_processor)
+        self.left_dock_panels['Material'] = dock_frame.MaterialConfFrame(self.vtk_processor)
+
+        # connect signal in main window
+        mesh_dock = self.left_dock_panels['Boundary']
+        uti.signal_center.report_part_list_signal.connect(mesh_dock.set_mesh_part_tree_slot)
+        uti.signal_center.clear_parts_signal.connect(mesh_dock.clear_parts_slot)
         # init 2 docks
         dock2 = QtGui.QDockWidget(self.tr("Command Line"), self)
         dock2.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
@@ -50,26 +61,36 @@ class MainWindow(QtGui.QMainWindow):
         dock1.setFeatures(QtGui.QDockWidget.DockWidgetMovable)
         dock1.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         #te1 = QtGui.QTextEdit(self.tr("ting1"))
-        te1 = self.left_dock_panels['mesh_conf']
+        te1 = self.left_dock_panels['Boundary']
         dock1.setWidget(te1)
         self.dock_left = dock1
+        dock1.setStyleSheet("QLabel{font-size:13px;font-family:Roman times;}")
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock1)
 
-        # add vtk
-        self.vtk_processor = vtk_proc.VtkProcessor(self)
+        #load vtk frame
         vtk_frame = self.vtk_processor.load_vtk_frame()
         vtk_frame.setMinimumSize(400, 400)
         self.setCentralWidget(vtk_frame)
 
         # actions
         exit_action = self.new_action('Exit', 'triggered()', QtCore.SLOT('close()'),
-                                      short_cut='Ctrl+Q', tip='Exit app')
-        show_mesh_panel_action = self.new_action('Mesh', 'triggered()', self.show_mesh_panel,
-                                      icon='icons/exit.png', tip='Show mesh panel')
-        import_mesh_action = self.new_action('Load Mesh', 'triggered()', self.import_mesh,
+                                      icon='icons/exit', short_cut='Ctrl+Q', tip='Exit app')
+        import_mesh_action = self.new_action('Import Mesh', 'triggered()', self.left_dock_panels['Mesh'].import_mesh,
                                              icon='icons/exit.png', short_cut='Ctrl+E', tip='Import CGNS Mesh')
-        show_output_panel_action = self.new_action('Output', 'triggered()', self.show_output_panel,
-                                                   icon='icons/output_config.png', tip = 'configure output directory')
+        fit_window_action = self.new_action('Fit Window', 'triggered()', self.vtk_processor.fit_slot,
+                                            short_cut = 'Ctrl+F', tip = 'resize the VTK window')
+
+        self.new_action('Mesh', 'triggered()', self.show_panel,
+                        tip='mesh configuration')
+        self.new_action('Output', 'triggered()', self.show_panel,
+                         icon='icons/output_config.png', tip = 'configure output directory')
+        self.new_action('Solver', 'triggered()', self.show_panel,
+                         tip = 'solver configuration')
+        self.new_action('Material', 'triggered()', self.show_panel,
+                         tip = 'material configuration')
+        self.new_action('Boundary', 'triggered()', self.show_panel,
+                        tip='boundary configuration')
+
         # status bar and progress bar
         statbar = self.statusBar()
         pbar = QtGui.QProgressBar(statbar)
@@ -83,11 +104,18 @@ class MainWindow(QtGui.QMainWindow):
         file_menu = menubar.addMenu('&File')
         file_menu.addAction(exit_action)
         file_menu.addAction(import_mesh_action)
+        view_menu = menubar.addMenu('&View')
+        view_menu.addAction(fit_window_action)
+        # tool bar
+        self.addToolBar('Mesh Config').addAction(self.action_dict['Mesh'])
+        self.addToolBar('Solver Config').addAction(self.action_dict['Solver'])
+        self.addToolBar('Material Config').addAction(self.action_dict['Material'])
+        self.addToolBar('Boundary Config').addAction(self.action_dict['Boundary'])
+        self.addToolBar('Output Config').addAction(self.action_dict['Output'])
 
-        toolbar = self.addToolBar('Mesh')
-        toolbar.addAction(show_mesh_panel_action)
-        output_panel_tool_bar = self.addToolBar('Output Conf')
-        output_panel_tool_bar.addAction(show_output_panel_action)
+        # test work
+        self.cycas = dock_frame.CycasTracker()
+
 
     def new_action(self, title, signal, slot_func, **kwargs):
         if kwargs.get('icon') is None:
@@ -99,7 +127,7 @@ class MainWindow(QtGui.QMainWindow):
         if kwargs.get('tip') is not None:
             action.setStatusTip(kwargs['tip'])
         self.connect(action, QtCore.SIGNAL(signal), slot_func)
-        self.actor_dict[title] = action
+        self.action_dict[title] = action
         return action
 
     # override
@@ -118,7 +146,7 @@ class MainWindow(QtGui.QMainWindow):
     #slot func
     @QtCore.pyqtSlot(str)
     def update_status_bar_slot(self, content):
-        self.statusBar().showMessage(content)
+        self.statusBar().showMessage(content, 3000)
 
     @QtCore.pyqtSlot(str)
     def log_slot(self, content):
@@ -138,24 +166,17 @@ class MainWindow(QtGui.QMainWindow):
         size = self.geometry()
         self.move((screen.width() - size.width()) / 2, (screen.height() - size.height()) / 2)
 
-    # action call backs
-    def import_mesh(self):
-        filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
-        self.log_widget.log('loading mesh %s' % filename)
-        task = vtk_proc.LoadCgnsTask(self.vtk_processor)
-        QtCore.QThreadPool.globalInstance().start(task)
-
-    def show_output_panel(self):
-        panel = self.left_dock_panels['output_conf']
+    @QtCore.pyqtSlot()
+    def show_panel(self):
+        key = str(self.sender().text())
+        self.dock_left.setWindowTitle(key + ' Panel')
+        panel = self.left_dock_panels[key]
         if self.dock_left.widget is not panel:
             self.dock_left.setWidget(panel)
 
-    def show_mesh_panel(self):
-        panel = self.left_dock_panels['mesh_conf']
-        if self.dock_left.widget is not panel:
-            self.dock_left.setWidget(panel)
 
 app = QtGui.QApplication(sys.argv)
+app.setApplicationName('Cycas-GUI')
 main = MainWindow()
 main.show()
 sys.exit(app.exec_())
