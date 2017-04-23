@@ -20,7 +20,11 @@ def check(ret):
 
 def set_vert_type(vtype):
     cgns_reader_module.read_verts.argtypes = [vtype, vtype, vtype]
+<<<<<<< HEAD
     cgns_reader_module.get_part_center.argtypes = [vtype, vtype, vtype, ct.c_int]
+=======
+    cgns_reader_module.get_part_center.argtypes = [vtype, vtype, vtype]
+>>>>>>> e00191bdcbf36aa98c443d57bf9bb0d9759393e8
 
 vtk_npe = {vtk.VTK_TETRA:4,
        vtk.VTK_QUAD:4,

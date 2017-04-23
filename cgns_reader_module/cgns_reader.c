@@ -5,10 +5,15 @@
 #include<assert.h>
 
 #include<cgnslib.h>
-
 #define ERROR_CHECK(command) do{if(command) {fprintf(stderr, "CGNS error at line %d:%s\n", __LINE__,cg_get_error()); return 1;}} while(0)
-
 #define CGNS_VERBOSE
+
+#ifdef _MSC_VER
+#pragma comment(lib, "cgns.lib")
+#define DLL_EXPORT __declspec( dllexport )
+#else
+#define DLL_EXPORT
+#endif
 
 typedef struct Element{
     int type;
@@ -25,25 +30,34 @@ static cgsize_t nelem = 0;
 static void* global_xcord = NULL;
 static void* global_ycord = NULL;
 static void* global_zcord = NULL;
+static void* global_xcenter = NULL;
+static void* global_ycenter = NULL;
+static void* global_zcenter = NULL;
 static Element* global_elem_list = NULL;
 static char* global_part_name = NULL;
 static size_t* global_part_offset = NULL;
 static DataType_t cord_datatype;
 
-int Gmsh_type(ElementType_t cgns_type, int* gmsh_type){
+DLL_EXPORT int read_file(const char*, size_t*, size_t*, size_t*, int*);
+DLL_EXPORT int read_verts(void**, void**, void**);
+DLL_EXPORT int read_element(char**, size_t**, Element**);
+DLL_EXPORT int get_part_center(void** centerx, void** centery, void** centerz, int type_flag);
+DLL_EXPORT int finalize();
+
+int vtk_type(ElementType_t cgns_type, int* gmsh_type){
     switch(cgns_type){
     case TRI_3:
-        *gmsh_type = 2; break;
-    case QUAD_4:
-        *gmsh_type = 3; break;
-    case TETRA_4:
-        *gmsh_type = 4; break;
-    case PYRA_5:
-        *gmsh_type = 7; break;
-    case PENTA_6:
-        *gmsh_type = 6; break;
-    case HEXA_8:
         *gmsh_type = 5; break;
+    case QUAD_4:
+        *gmsh_type = 9; break;
+    case TETRA_4:
+        *gmsh_type = 10; break;
+    case PYRA_5:
+        *gmsh_type = 14; break;
+    case PENTA_6:
+        *gmsh_type = 13; break;
+    case HEXA_8:
+        *gmsh_type = 12; break;
     default:
         fprintf(stderr, "unknown element type %s\n", cg_ElementTypeName(cgns_type)); 
         return -1;
@@ -77,9 +91,9 @@ int read_file(const char* title, size_t* arg_nv, size_t* arg_nsec, size_t* arg_n
 #ifdef CGNS_VERBOSE
     printf("ncoords %u npart %u\n", ncords, nsection);
 #endif
-    if (!strcmp(DataTypeName[cord_datatype], "RealDouble")) {
+    if (!strcmp(cg_DataTypeName(cord_datatype), "RealDouble")) {
         *type_flag = 0; 
-    } else if (!strcmp(DataTypeName[cord_datatype], "RealSingle")) {
+    } else if (!strcmp(cg_DataTypeName(cord_datatype), "RealSingle")) {
         *type_flag = 1;
     } else {
 		*type_flag = -1;
@@ -106,14 +120,16 @@ int read_verts(void** xcord, void** ycord, void** zcord){
     cgsize_t range_min = 1, range_max = nvert;
 
     for (int idim = 1; idim <= ncords; ++idim) {
-        if (!strcmp(DataTypeName[cord_datatype], "RealDouble")) {
+        if (!strcmp(cg_DataTypeName(cord_datatype), "RealDouble")) {
             buffer = malloc(nvert * sizeof(double));
-        } else if (!strcmp(DataTypeName[cord_datatype], "RealSingle")) {
+        } else if (!strcmp(cg_DataTypeName(cord_datatype), "RealSingle")) {
             buffer = malloc(nvert * sizeof(float));
         } else {
 			assert(0);
 		}
 		ERROR_CHECK(cg_coord_info(cgns_file, ibase, izone, idim, &cord_datatype, charbuffer));
+        printf("base%d zone%d cord_type%d range_min%d range_max%d \n name:%s\n",
+                ibase, izone, cord_datatype, range_min, range_max, charbuffer);
         ERROR_CHECK(cg_coord_read(cgns_file, ibase, izone, charbuffer, cord_datatype, &range_min, &range_max, buffer));
         switch(idim){
             case 1: *xcord = buffer; global_xcord = buffer; break; 
@@ -122,7 +138,7 @@ int read_verts(void** xcord, void** ycord, void** zcord){
             default: printf("unknown coordinate %d\n", idim); return 1;
         }
 #ifdef CGNS_VERBOSE
-        printf("%s: type: %s %ld --> %ld \n", charbuffer, DataTypeName[cord_datatype], range_min, range_max);
+        printf("%s: type: %s %ld --> %ld \n", charbuffer, cg_DataTypeName(cord_datatype), range_min, range_max);
 #endif
     }
     return 0;
@@ -136,7 +152,7 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
 
     cgsize_t* pid = NULL;
     *elem_list = (Element*) malloc(nelem * sizeof(Element));
-    *part_offset = (size_t*) malloc((nsection + 1) * sizeof(Element));
+    *part_offset = (size_t*) malloc((nsection + 1) * sizeof(size_t));
     *part_name = (char*) malloc(nsection * 512 * sizeof(char));
     Element* elem_list_iter = *elem_list;
     size_t* part_offset_iter = *part_offset;
@@ -146,7 +162,11 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
         *(part_name_iter++) = '@';
         ERROR_CHECK(cg_section_read(cgns_file, ibase, izone, isec, charbuffer, &type,
                                     &istart, &iend, &nbnd, &parent_flag));
+#ifdef _MSC_VER
+        strcpy_s(part_name_iter, 1024, charbuffer);
+#else
         strcpy(part_name_iter, charbuffer);
+#endif
         part_name_iter += strlen(charbuffer);
         ERROR_CHECK(cg_ElementDataSize(cgns_file, ibase, izone, isec, &sec_data_size));
         pid = (cgsize_t*)malloc(sec_data_size * sizeof(cgsize_t));
@@ -160,7 +180,7 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
             ERROR_CHECK(cg_npe(type, &npe));
             for (int iele = 0; iele != nelem_sec; ++iele) {
                 Element* this_element = elem_list_iter++;
-                if(Gmsh_type(type, &this_element->type)) return -1;
+                if(vtk_type(type, &this_element->type)) return -1;
                 for (int j = 0; j != npe; ++j) {
                     this_element->pid[j] = pid[iele * npe + j] - 1; //why -1???
                 }
@@ -173,7 +193,7 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
 				ElementType_t cell_type = (ElementType_t) pid[counter++];
 				ERROR_CHECK(cg_npe(cell_type, &npe));
 				Element* this_element = elem_list_iter++;
-				if(Gmsh_type(cell_type, &this_element->type)) return -1;
+				if(vtk_type(cell_type, &this_element->type)) return -1;
 				for (int j = 0; j != npe; ++j) {
 					this_element->pid[j] = pid[counter++] - 1; //why -1???
 				}
@@ -185,12 +205,47 @@ int read_element(char** part_name, size_t** part_offset, Element** elem_list){
         part_offset_iter[isec] = part_offset_iter[isec - 1] + nelem_sec;
         free(pid);
     }
-	for (int i = 0; i != nsection + 1; ++i) {
-		printf("offset in c %u\n", part_offset_iter[i]);
-	}
     global_elem_list = *elem_list;
     global_part_offset = *part_offset;
     global_part_name = *part_name;
+    return 0;
+}
+
+
+
+int get_part_center(void** centerx, void** centery, void** centerz, int type_flag){
+    if (type_flag == 0) {
+        *centerx = malloc(nsection * sizeof(double));
+        *centery = malloc(nsection * sizeof(double));
+        *centerz = malloc(nsection * sizeof(double));
+        double* xc = (double*) (*centerx);
+        double* yc = (double*) (*centery);
+        double* zc = (double*) (*centerz);
+        double* x  = (double*) global_xcord;
+        double* y  = (double*) global_ycord;
+        double* z  = (double*) global_zcord;
+        for (int isec = 0; isec != nsection; ++ isec) {
+            xc[isec] = 0.;
+            yc[isec] = 0.;
+            zc[isec] = 0.;
+            for (int i = global_part_offset[isec]; i != global_part_offset[isec + 1]; ++i) {
+                size_t idx = global_elem_list[i].pid[0];
+                xc[isec] += x[idx];
+                yc[isec] += y[idx];
+                zc[isec] += z[idx];
+            }
+            size_t nelem_sec = global_part_offset[isec+1] - global_part_offset[isec];
+            xc[isec] /= nelem_sec;
+            yc[isec] /= nelem_sec;
+            zc[isec] /= nelem_sec;
+        }
+    }else {
+        assert(0);
+        return -1;
+    }
+    global_xcenter = *centerx;
+    global_ycenter = *centery;
+    global_zcenter = *centerz;
     return 0;
 }
 
@@ -201,6 +256,9 @@ int finalize(){
     free(global_elem_list);
     free(global_part_offset);
     free(global_part_name);
+    free(global_xcenter);
+    free(global_ycenter);
+    free(global_zcenter);
     ERROR_CHECK(cg_close(cgns_file));
     return 0;
 }
