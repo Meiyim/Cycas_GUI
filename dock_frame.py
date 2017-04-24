@@ -222,13 +222,6 @@ class SolverConfFrame(ConfFrame):
         return ['']
 
 class PartsTreeFrame(ConfFrame):
-    class BoundaryType(object):
-        UNDEFINED=-1
-        WALL  = 0
-        INLET = 1
-        OUTLET= 2
-        SYMMETRY=3
-        PERIODIC=5
     def __init__(self, vtk_processor):
         super(PartsTreeFrame, self).__init__(vtk_processor)
         self.setFixedWidth(300)

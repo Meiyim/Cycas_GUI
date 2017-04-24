@@ -1,4 +1,5 @@
 import logging
+import re
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 
@@ -6,26 +7,34 @@ class VectorInputor(QtGui.QTextEdit):
     new_text_signal = QtCore.pyqtSignal(tuple)
     def __init__(self, parent = None):
         super(VectorInputor, self).__init__(parent)
-        #self.textChanged.connect(self.did_change_text_slot)
+        self.textChanged.connect(self.did_change_text_slot)
+        self.format_pattern = re.compile(r'^(\d*\.?\d*),(\d*\.?\d*),(\d*\.?\d*)$')
         self.setText(',,')
-        self.last_text = ''
+        self.vec = (0, 0, 0)
 
     @QtCore.pyqtSlot()
     def did_change_text_slot(self):
-        text = self.toPlainText()
-        if not text.isdigit():
-            self.setText(self.last_text)
-            return
-        elif text.count(',') > 2:
-            print 'wrong vector: %s' % text
-            self.undo()
-        elif text.count(',') < 2:
-            print 'wrong vector: %s' % text
-            self.setText(self.last_text)
-
-
-        self.new_text_signal.emit(text)
-        self.last_text = text
+        text = str(self.toPlainText())
+        print text
+        match = self.format_pattern.match(text)
+        cursor = self.textCursor()
+        if not match:
+            if text.count(',') < 2: # because of delete ','
+                cursor.insertText(',')
+                cursor.movePosition(QtGui.QTextCursor.Left)
+                self.setTextCursor(cursor)
+            elif text.count(',') > 2: # because of insert ','
+                if text[cursor.position()] == ',':
+                    cursor.deleteChar()
+                else:
+                    cursor.deletePreviousChar()
+            else: # illegal char inserted
+                cursor.deletePreviousChar()
+        elif match.group(1).isdigit() and match.group(2).isdigit() and match.group(3).isdigit():
+            self.vec = (float(match.group(1)), float(match.group(2)), float(match.group(3)))
+            self.new_text_signal.emit(self.vec)
+        else:
+            pass
 
 class BCDialog(QtGui.QDialog):
     def __init__(self, bctype, parent = None, **kwargs):
