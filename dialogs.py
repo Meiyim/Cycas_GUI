@@ -109,10 +109,10 @@ class MaterialDialog(QtGui.QDialog):
         super(MaterialDialog, self).__init__(parent)
         self.setFixedWidth(500)
         self.setWindowTitle('Select Material From Database')
+        #self.write_lib()
         self.lmat = lmat
         self.smat = smat
         self.selected_list = []
-
 
         vbox = QtGui.QVBoxLayout()
         self.table = QtGui.QTableWidget(len(self.lmat) + len(self.smat), 2, self)

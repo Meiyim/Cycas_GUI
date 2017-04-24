@@ -27,8 +27,9 @@ class ConfFrame(QtGui.QFrame): # Every Frame object has property: vtk
 class MaterialConfFrame(ConfFrame):
     def __init__(self, vtk_processor):
         super(MaterialConfFrame, self).__init__(vtk_processor)
-        self.lmat = None # material property databse
-        self.smat = None
+        self.lmat = {} # material property databse
+        self.smat = {}
+        self.material = []
         self.load_database()
 
         self.setFixedWidth(300)
@@ -68,18 +69,24 @@ class MaterialConfFrame(ConfFrame):
     def add_material_slot(self, material_list):
         uti.signal_center.log_signal.emit('material set: %s' % repr(material_list))
         for material in material_list:
+            if material in self.material:
+                continue
             if material in self.lmat.keys():
+                self.material.append(material)
                 item = QtGui.QTreeWidgetItem(self.root_liquid)
                 item.setText(0, material)
             if material in self.smat.keys():
+                self.material.append(material)
                 item = QtGui.QTreeWidgetItem(self.root_solid)
                 item.setText(0, material)
 
-
-
     @QtCore.pyqtSlot()
     def delete_material_slot(self):
-        pass
+        item = self.tree.currentItem()
+        material = item.text(0)
+        uti.signal_center.log_signal.emit('material removed: %s' % material)
+        self.material.remove(material)
+        item.parent().removeChild(item)
 
     def generate_input_card(self):
         return ['']
@@ -149,6 +156,8 @@ class MeshConfFrame(ConfFrame):
 
     def import_mesh(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
+        if filename == '':
+            return
         filename = './moxing1.cgns'
         uti.signal_center.log_signal.emit('loading mesh %s' % filename)
         self.did_set_mesh_input_dir(filename)
@@ -466,6 +475,7 @@ class OutputConfFrame(ConfFrame):
         return ret
 
 
+# TODO: test and debug!
 class CycasTracker(QtCore.QObject):
     def __init__(self):
         super(CycasTracker, self).__init__()
