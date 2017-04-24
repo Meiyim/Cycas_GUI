@@ -7,6 +7,12 @@ logging.basicConfig(level=logging.DEBUG,
                 filename='cycas_gui.log',
                 filemode='w')
 
+def dict_to_str(dict):
+    lines = []
+    for k, v in dict.iteritems():
+        lines.append(str(k) + ':' + str(v))
+    return  ', '.join(lines)
+
 class SignalCenter(QtCore.QObject):
     update_progress_bar_signal = QtCore.pyqtSignal(int)
     update_status_signal = QtCore.pyqtSignal(str)

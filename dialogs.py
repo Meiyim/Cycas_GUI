@@ -1,7 +1,10 @@
 import logging
 import re
+import pickle
 from PyQt4 import QtCore
 from PyQt4 import QtGui
+
+import utility as uti
 
 class VectorInputor(QtGui.QTextEdit):
     did_set_vec_signal = QtCore.pyqtSignal(tuple)
@@ -99,3 +102,101 @@ class BCDialog(QtGui.QDialog):
     @QtCore.pyqtSlot(tuple) # vector picked for inlet bc
     def did_set_vector(self, vector):
         self.info['inlet vec'] = vector
+
+class MaterialDialog(QtGui.QDialog):
+    did_set_mat_signal = QtCore.pyqtSignal(list)
+    def __init__(self, lmat, smat, parent = None, **kwargs):
+        super(MaterialDialog, self).__init__(parent)
+        self.setFixedWidth(500)
+        self.setWindowTitle('Select Material From Database')
+        self.lmat = lmat
+        self.smat = smat
+        self.selected_list = []
+
+
+        vbox = QtGui.QVBoxLayout()
+        self.table = QtGui.QTableWidget(len(self.lmat) + len(self.smat), 2, self)
+        self.table.setColumnWidth(1, 200)
+        self.table.setColumnWidth(1, 350)
+        self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.table.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        self.update_table()
+        # row
+        vbox.addWidget(self.table)
+        # row
+        hbox = QtGui.QHBoxLayout()
+        btm = QtGui.QPushButton('Add')
+        btm.clicked.connect(self.accept)
+        hbox.addWidget(btm)
+        btm = QtGui.QPushButton('New') # TODO: Create New Material
+        hbox.addWidget(btm)
+
+        vbox.addLayout(hbox)
+        self.setLayout(vbox)
+
+    def update_table(self):
+        self.table.clear()
+        self.table.setSortingEnabled(False)
+        for row, (material, description) in enumerate(self.lmat.iteritems()):
+            item = QtGui.QTableWidgetItem(material)
+            self.table.setItem(row, 0, item)
+            item = QtGui.QTableWidgetItem(uti.dict_to_str(description))
+            self.table.setItem(row, 1, item)
+        for row, (material, description) in enumerate(self.smat.iteritems()):
+            item = QtGui.QTableWidgetItem(material)
+            self.table.setItem(row + len(self.lmat), 0, item)
+            item = QtGui.QTableWidgetItem(uti.dict_to_str(description))
+            self.table.setItem(row + len(self.lmat), 1, item)
+            print row+len(self.lmat)
+        self.table.setSortingEnabled(True)
+        self.table.setHorizontalHeaderLabels(['Material', 'Properties'])
+
+
+    @QtCore.pyqtSlot()
+    def accept(self):
+        super(MaterialDialog, self).accept()
+        items = self.table.selectedItems()
+        items = [item for item in items if item.column() == 0]
+        self.did_set_mat_signal.emit([str(item.text()) for item in items])
+
+    def write_lib(self):
+        f = open('material_properties.dat','wb')
+        self.lmat = {
+            'air':{
+                'density': 0.,
+                'specific heat': 0.,
+                'conductivity': 0.,
+                'viscosity': 0.,
+                'Compressible': True,
+            },
+            'water':{
+                'density': 0.,
+                'specific heat': 0.,
+                'conductivity': 0.,
+                'viscosity': 0.,
+                'Compressible': False,
+            },
+            'steam':{
+                'density': 0.,
+                'specific heat': 0.,
+                'conductivity': 0.,
+                'viscosity': 0.,
+                'Compressible': True,
+            },
+        }
+        self.smat = {
+            'concreate':{
+                'density': 0.,
+                'specific heat': 0.,
+                'conductivity': 0.,
+            },
+            'steel':{
+                'density': 0.,
+                'specific heat': 0.,
+                'conductivity': 0.,
+            },
+        }
+        pickle.dump(self.lmat, f)
+        pickle.dump(self.smat, f)
+        print 'dumped'
+

@@ -69,8 +69,6 @@ class VtkProcessor(QtCore.QObject):
         self.part_info['Sample Sphere'] = {'center': source.GetCenter()}
         self.ug_mapper_actor['Sample Sphere'] = (source, mapper, actor)
         uti.signal_center.report_part_list_signal.emit({'Volume Parts':['Sample Sphere'], 'Boundary Parts':list()})
-
-
         # add to properties
 
         # delete-able

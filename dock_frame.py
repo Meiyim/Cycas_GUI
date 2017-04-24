@@ -1,5 +1,6 @@
 import sys
 import logging
+import pickle
 import subprocess as sp
 import os
 import shutil
@@ -26,6 +27,10 @@ class ConfFrame(QtGui.QFrame): # Every Frame object has property: vtk
 class MaterialConfFrame(ConfFrame):
     def __init__(self, vtk_processor):
         super(MaterialConfFrame, self).__init__(vtk_processor)
+        self.lmat = None # material property databse
+        self.smat = None
+        self.load_database()
+
         self.setFixedWidth(300)
         vbox = QtGui.QVBoxLayout()
 
@@ -42,17 +47,49 @@ class MaterialConfFrame(ConfFrame):
         self.tree.addTopLevelItem(self.root_solid)
         self.tree.addTopLevelItem(self.root_liquid)
 
+        hbox = QtGui.QHBoxLayout()
         btm = QtGui.QPushButton('Add')
-        btm.clicked.connect(self.add_material_slot)
-        vbox.addWidget(btm)
+        btm.clicked.connect(self.show_material_database_slot)
+        hbox.addWidget(btm)
+        btm = QtGui.QPushButton('Delete')
+        btm.clicked.connect(self.delete_material_slot)
+        hbox.addWidget(btm)
+
+        vbox.addLayout(hbox)
         self.setLayout(vbox)
 
     @QtCore.pyqtSlot()
-    def add_material_slot(self):
+    def show_material_database_slot(self):
+        dialog = dia.MaterialDialog(self.lmat, self.smat)
+        dialog.did_set_mat_signal.connect(self.add_material_slot)
+        dialog.exec_()
+
+    @QtCore.pyqtSlot(list)
+    def add_material_slot(self, material_list):
+        uti.signal_center.log_signal.emit('material set: %s' % repr(material_list))
+        for material in material_list:
+            if material in self.lmat.keys():
+                item = QtGui.QTreeWidgetItem(self.root_liquid)
+                item.setText(0, material)
+            if material in self.smat.keys():
+                item = QtGui.QTreeWidgetItem(self.root_solid)
+                item.setText(0, material)
+
+
+
+    @QtCore.pyqtSlot()
+    def delete_material_slot(self):
         pass
 
     def generate_input_card(self):
         return ['']
+
+    def load_database(self):
+        data_base = open('material_properties.dat','rb')
+        self.lmat = pickle.load(data_base)
+        self.smat = pickle.load(data_base)
+
+
 
 class MeshConfFrame(ConfFrame):
     def __init__(self, vtk_processor):
