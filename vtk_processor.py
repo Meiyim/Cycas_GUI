@@ -95,7 +95,6 @@ class VtkProcessor(QtCore.QObject):
     def set_part_color(self, part_name, color):
         u, m, a = self.ug_mapper_actor[part_name]
         a.GetProperty().SetColor(color[0], color[1], color[2])
-        print 'color set', color, part_name
         uti.signal_center.render_signal.emit()
 
     def clear(self):
@@ -160,7 +159,6 @@ class LoadCgnsTask(QtCore.QRunnable):
         uti.signal_center.report_part_list_signal.emit({'Volume Parts':list(v_part), 'Boundary Parts':list(b_part)})
         uti.signal_center.render_signal.emit()
         uti.signal_center.update_status_signal.emit('done')
-        print self.vtk_processor.vtk_ren.GetActors()
         self.vtk_processor.vtk_ren.ResetCamera()
         cgns_reader.deinit()
 

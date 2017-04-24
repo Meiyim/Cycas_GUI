@@ -18,7 +18,7 @@ def insert_section_header(header, vbox):
     la.setFixedHeight(15)
     vbox.addWidget(la)
 
-class ConfFrame(QtGui.QFrame):
+class ConfFrame(QtGui.QFrame): # Every Frame object has property: vtk
     def __init__(self, vtk_processor):
         super(ConfFrame, self).__init__()
         self.vtk_processor = vtk_processor
@@ -363,19 +363,28 @@ class PartsTreeFrame(ConfFrame):
     # push bottom
     @QtCore.pyqtSlot()
     def did_push_edit_btm(self):
-        bc_type = self.combo_box.currentIndex()
-        bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary')
-        bc_dialog.accepted.connect(self.did_finish_dialog)
+        part_name = str(self.tree_widget.currentItem().text(0))
+        part_info = self.dict_tree['Boundary Parts'][part_name]
+        assert part_info['type'] == self.combo_box.currentIndex()
+        bc_type = part_info['type']
+        bc_dialog = None
+        if bc_type == 1:
+            bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary', slipwall=part_info.get('slip wall'))
+        elif bc_type == 2:
+            bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary', init=part_info.get('inlet vec'))
+        else:
+            bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary')
+        bc_dialog.did_set_signal.connect(self.did_finish_dialog)
         bc_dialog.exec_() # blocking call
 
     # dialog
-    def did_finish_dialog(self):
-        dialog = self.sender()
+    def did_finish_dialog(self, info): #info dict for this bc
         item = self.tree_widget.currentItem()
-        part_name = str(item.text())
-        if dialog.info is not None:
-            self.dict_tree['Boundary Parts'][part_name]['vec'] = dialog.info
-            print 'getting info from dialog'
+        part_name = str(item.text(0))
+        if info != {}:
+            for k, v in info.iteritems():
+                self.dict_tree['Boundary Parts'][part_name][k] = v
+            uti.signal_center.log_signal.emit('%s is set to %s' % (part_name, str(info)))
 
     # self define
     @QtCore.pyqtSlot(dict)
