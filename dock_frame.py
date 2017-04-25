@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 import sys
 import logging
 import pickle
@@ -18,6 +19,7 @@ def insert_section_header(header, vbox):
     la.setStyleSheet(section_header_font_sytle)
     la.setFixedHeight(15)
     vbox.addWidget(la)
+
 
 class ConfFrame(QtGui.QFrame): # Every Frame object has property: vtk
     def __init__(self, vtk_processor):
@@ -95,7 +97,6 @@ class MaterialConfFrame(ConfFrame):
         data_base = open('material_properties.dat','rb')
         self.lmat = pickle.load(data_base)
         self.smat = pickle.load(data_base)
-
 
 
 class MeshConfFrame(ConfFrame):
@@ -186,14 +187,13 @@ class SolverConfFrame(ConfFrame):
     def __init__(self, vtk_processor):
         super(SolverConfFrame, self).__init__(vtk_processor)
         self.setFixedWidth(300)
-        self.models = {'Energy Equation': {'desc': 'off', 'enabled': False},
-                       'Viscid Model': {'desc': '','submodel':{
-                            'k-epsilon':{'desc': 'off'},
-                            'k-omiga':{'desc': 'off'},
-                            },
-                            'enabled': -1, #enabled idx
-                       },
-                       'Speciecs': {'desc': 'off', 'enabled': False},
+
+        # model define
+        self.models = {'Energy Equation': {'desc': u'理想气体状态方程', 'enabled': False},
+                       'Viscid Model': {'desc': u'湍流模型','submodels':['k-epsilon', 'k-omiga'], 'enabled': None,}, #enabled idx
+                       'k-epsilon':{'desc': u'经典两方程', 'Configuable':{'c1':None, 'c2': None, 'c3': None}, 'submodelof': 'Viscid Model'},
+                       'k-omiga':{'desc': u'经典两方程', 'Configuable':{'a1':None, 'a2':None, 'a3':None}, 'submodelof': 'Viscid Model'},
+                       'Speciecs': {'desc': u'被动标量输运', 'enabled': False},
         }
         vbox = QtGui.QVBoxLayout()
         #row
@@ -240,32 +240,83 @@ class SolverConfFrame(ConfFrame):
         self.update_tree()
         # row
         hbox = QtGui.QHBoxLayout()
-        hbox.addWidget(QtGui.QPushButton('Edit'))
+        btm = QtGui.QPushButton('Edit')
+        btm.clicked.connect(self.show_model_config_dialog)
+        hbox.addWidget(btm)
         vbox.addLayout(hbox)
         self.setLayout(vbox)
 
+        #signals
+        self.tree.itemChanged.connect(self.item_changed_slot)
+
     def update_tree(self):
+        self.tree.clear()
         for model, info in self.models.iteritems():
+            if info.get('submodelof') is not None:
+                continue
             it = QtGui.QTreeWidgetItem(self.tree)
             it.setText(0, model)
             it.setText(1, info['desc'])
-            if info['enabled'] is True:
-                it.setCheckState(0, QtCore.Qt.Checked)
-            else:
+            if not info.get('enabled') or info['enabled'] == -1:
                 it.setCheckState(0, QtCore.Qt.Unchecked)
+            else:
+                it.setCheckState(0, QtCore.Qt.Checked)
             self.tree.addTopLevelItem(it)
-            if info.get('submodel') is not None:
-                for idx, (submodel, subinfo) in enumerate(info['submodel'].iteritems()):
+            if info.get('submodels') is not None:
+                for submodel, subinfo in [(sm, self.models[sm]) for sm in info['submodels']]:
                     subit = QtGui.QTreeWidgetItem(it)
                     subit.setText(0, submodel)
                     subit.setText(1, subinfo['desc'])
-                    if idx == info['enabled']:
+                    if  info['enabled'] == submodel:
                         subit.setCheckState(0, QtCore.Qt.Checked)
                     else:
                         subit.setCheckState(0, QtCore.Qt.Unchecked)
 
     def generate_input_card(self):
         return ['']
+
+    @QtCore.pyqtSlot(dict)
+    def did_finish_dialog(self, dic):
+        model = str(self.tree.currentItem().text(0))
+        self.models[model]['Configuable'] = dic
+        uti.signal_center.log_signal.emit('model: %s set parameters: %s' % (model, uti.dict_to_str(dic)))
+
+    @QtCore.pyqtSlot()
+    def show_model_config_dialog(self):
+        model = str(self.tree.currentItem().text(0))
+        if self.models[model].get('Configuable') is None:
+            return
+        dialog = dia.ModelDialog(self.models[model]['Configuable'], model, self)
+        dialog.did_set_signal.connect(self.did_finish_dialog)
+        dialog.exec_()
+
+    @QtCore.pyqtSlot(QtGui.QTreeWidgetItem, int)
+    def item_changed_slot(self, item, column):
+        if column != 0: return
+        model_name = str(item.text(column))
+        if item.checkState(column) == QtCore.Qt.Checked:
+            parent_model = self.models[model_name].get('submodelof')
+            if parent_model is not None: # submodel
+                self.models[parent_model]['enabled'] = model_name
+            elif self.models[model_name].get('submodels') is not None: # parent model
+                self.models[model_name]['enabled'] = self.models[model_name]['submodels'][0]
+            else: # model without submodel
+                self.models[model_name]['enabled'] = True
+            uti.signal_center.log_signal.emit('model activated %s' % model_name)
+        if item.checkState(column) == QtCore.Qt.Unchecked:
+            parent_model = self.models[model_name].get('submodelof')
+            if parent_model is not None:
+                self.models[parent_model]['enabled'] = None
+            elif self.models[model_name].get('submodels') is not None:
+                self.models[model_name]['enabled'] = None
+            else:
+                self.models[model_name]['enabled'] = False
+            uti.signal_center.log_signal.emit('model deactivated %s' % model_name)
+
+        print self.models[model_name]
+        self.tree.itemChanged.disconnect() # stop event handel
+        self.update_tree()
+        self.tree.itemChanged.connect(self.item_changed_slot)
 
 class PartsTreeFrame(ConfFrame):
     def __init__(self, vtk_processor):
@@ -430,7 +481,7 @@ class PartsTreeFrame(ConfFrame):
         if info != {}:
             for k, v in info.iteritems():
                 self.dict_tree['Boundary Parts'][part_name][k] = v
-            uti.signal_center.log_signal.emit('%s is set to %s' % (part_name, str(info)))
+            uti.signal_center.log_signal.emit('%s is set to %s' % (part_name, uti.dict_to_str(info)))
 
     # self define
     @QtCore.pyqtSlot(dict)

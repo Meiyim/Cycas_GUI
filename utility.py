@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG,
 def dict_to_str(dict):
     lines = []
     for k, v in dict.iteritems():
-        lines.append(str(k) + ':' + str(v))
+        lines.append(str(k) + ': ' + str(v))
     return  ', '.join(lines)
 
 class SignalCenter(QtCore.QObject):
