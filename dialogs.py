@@ -18,7 +18,11 @@ class NumberInputor(QtGui.QTextEdit):
 
     @QtCore.pyqtSlot()
     def did_change_text_slot(self):
-        text = str(self.toPlainText())
+        try:
+            text = str(self.toPlainText())
+        except UnicodeEncodeError:
+            self.undo()
+            return
         match = self.format_pattern.match(text)
         if not match:
             self.textCursor().deletePreviousChar()
@@ -40,7 +44,11 @@ class VectorInputor(QtGui.QTextEdit):
 
     @QtCore.pyqtSlot()
     def did_change_text_slot(self):
-        text = str(self.toPlainText())
+        try:
+            text = str(self.toPlainText())
+        except UnicodeEncodeError:
+            self.undo()
+            return
         match = self.format_pattern.match(text)
         cursor = self.textCursor()
         if not match:

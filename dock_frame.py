@@ -328,7 +328,7 @@ class PartsTreeFrame(ConfFrame):
         tree_widget.setMouseTracking(True)
         vbox.addWidget(tree_widget)
         tree_widget.setColumnCount(2)
-        tree_widget.setHeaderLabels(['Parts', 'Type'])
+        tree_widget.setHeaderLabels([self.tr('Parts'), self.tr('Type')])
         tree_widget.setColumnWidth(0, 150)
         it1 = QtGui.QTreeWidgetItem(tree_widget)
         it1.setText(0, 'Volume Parts')
