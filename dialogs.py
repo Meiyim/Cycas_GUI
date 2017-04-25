@@ -72,10 +72,10 @@ class ConfigDialog(QtGui.QDialog):
 
     def set_ok_cancel_buttom(self):
         hbox = QtGui.QHBoxLayout()
-        btm = QtGui.QPushButton('OK')
+        btm = QtGui.QPushButton(self.tr('OK'))
         btm.clicked.connect(self.accept)
         hbox.addWidget(btm)
-        btm = QtGui.QPushButton('Cancel')
+        btm = QtGui.QPushButton(self.tr('Cancel'))
         btm.clicked.connect(self.reject)
         hbox.addWidget(btm)
         self.vbox.addLayout(hbox)
@@ -92,9 +92,9 @@ class BCDialog(ConfigDialog):
             self.setWindowTitle(kwargs['title'])
         if bctype == 1: # wall
             hbox = QtGui.QHBoxLayout()
-            btm1 = QtGui.QRadioButton('slip wall')
+            btm1 = QtGui.QRadioButton(self.tr('slip wall'))
             btm1.toggled.connect(self.did_set_wall_type)
-            btm2 = QtGui.QRadioButton('no slip wall')
+            btm2 = QtGui.QRadioButton(self.tr('no slip wall'))
             init_status = kwargs.get('slipwall')
             if init_status is not None:
                 btm1.setChecked(init_status)
@@ -111,15 +111,15 @@ class BCDialog(ConfigDialog):
             self.vbox.addLayout(hbox)
         elif bctype == 3: # outlet noting to config
             hbox = QtGui.QHBoxLayout()
-            hbox.addWidget(QtGui.QLabel('Outlet noting to be done'))
+            hbox.addWidget(QtGui.QLabel(self.tr('Outlet noting to be done')))
             self.vbox.addLayout(hbox)
         elif bctype == 4: # symmetric
             hbox = QtGui.QHBoxLayout()
-            hbox.addWidget(QtGui.QLabel('Symmetry noting to be done'))
+            hbox.addWidget(QtGui.QLabel(self.tr('Symmetry noting to be done')))
             self.vbox.addLayout(hbox)
         elif bctype == 5: # periodic
             hbox = QtGui.QHBoxLayout()
-            hbox.addWidget(QtGui.QLabel('To be implement?'))
+            hbox.addWidget(QtGui.QLabel(self.tr('To be implement?')))
             self.addLayout(hbox)
         self.set_ok_cancel_buttom()
 
@@ -135,6 +135,7 @@ class BCDialog(ConfigDialog):
 class ModelDialog(ConfigDialog):
     def __init__(self, config_table, model, parent):
         super(ModelDialog, self).__init__(parent)
+        self.setWindowTitle(self.tr('Edit model parameters'))
         self.config_table = config_table
         self.inputors = {}
         grid = QtGui.QGridLayout()
@@ -158,7 +159,7 @@ class MaterialDialog(QtGui.QDialog):
     def __init__(self, lmat, smat, parent = None, **kwargs):
         super(MaterialDialog, self).__init__(parent)
         self.setFixedWidth(500)
-        self.setWindowTitle('Select Material From Database')
+        self.setWindowTitle(self.tr('Select Material From Database'))
         #self.write_lib()
         self.lmat = lmat
         self.smat = smat
@@ -175,10 +176,10 @@ class MaterialDialog(QtGui.QDialog):
         vbox.addWidget(self.table)
         # row
         hbox = QtGui.QHBoxLayout()
-        btm = QtGui.QPushButton('Add')
+        btm = QtGui.QPushButton(self.tr('Add'))
         btm.clicked.connect(self.accept)
         hbox.addWidget(btm)
-        btm = QtGui.QPushButton('New') # TODO: Create New Material
+        btm = QtGui.QPushButton(self.tr('New')) # TODO: Create New Material
         hbox.addWidget(btm)
 
         vbox.addLayout(hbox)
@@ -199,7 +200,7 @@ class MaterialDialog(QtGui.QDialog):
             self.table.setItem(row + len(self.lmat), 1, item)
             print row+len(self.lmat)
         self.table.setSortingEnabled(True)
-        self.table.setHorizontalHeaderLabels(['Material', 'Properties'])
+        self.table.setHorizontalHeaderLabels([self.tr('Material'), self.tr('Properties')])
 
 
     @QtCore.pyqtSlot()
@@ -248,6 +249,6 @@ class MaterialDialog(QtGui.QDialog):
         }
         pickle.dump(self.lmat, f)
         pickle.dump(self.smat, f)
-        print 'dumped'
+        uti.signal_center.log_signal.emit(self.tr('wrote to database'))
 
 

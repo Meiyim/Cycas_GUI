@@ -40,21 +40,21 @@ class MaterialConfFrame(ConfFrame):
         self.tree = QtGui.QTreeWidget(self)
         self.tree.setMouseTracking(True)
         self.tree.setColumnCount(1)
-        self.tree.setHeaderLabel('Materials')
+        self.tree.setHeaderLabel(self.tr('Materials'))
         vbox.addWidget(self.tree)
 
         self.root_solid = QtGui.QTreeWidgetItem(self.tree)
-        self.root_solid.setText(0, 'Solid Material')
+        self.root_solid.setText(0, self.tr('Solid Material'))
         self.root_liquid = QtGui.QTreeWidgetItem(self.tree)
-        self.root_liquid.setText(0, 'Liquid Material')
+        self.root_liquid.setText(0, self.tr('Liquid Material'))
         self.tree.addTopLevelItem(self.root_solid)
         self.tree.addTopLevelItem(self.root_liquid)
 
         hbox = QtGui.QHBoxLayout()
-        btm = QtGui.QPushButton('Add')
+        btm = QtGui.QPushButton(self.tr('Add'))
         btm.clicked.connect(self.show_material_database_slot)
         hbox.addWidget(btm)
-        btm = QtGui.QPushButton('Delete')
+        btm = QtGui.QPushButton(self.tr('Delete'))
         btm.clicked.connect(self.delete_material_slot)
         hbox.addWidget(btm)
 
@@ -69,7 +69,7 @@ class MaterialConfFrame(ConfFrame):
 
     @QtCore.pyqtSlot(list)
     def add_material_slot(self, material_list):
-        uti.signal_center.log_signal.emit('material set: %s' % repr(material_list))
+        uti.signal_center.log_signal.emit('material set: %s'% repr(material_list))
         for material in material_list:
             if material in self.material:
                 continue
@@ -106,9 +106,9 @@ class MeshConfFrame(ConfFrame):
         vbox = QtGui.QVBoxLayout()
         self.scale_mod = 0  # 0 -- no scale, 1 -- exact size, 2 -- scale ratio
         # row
-        insert_section_header('Input Config', vbox)
+        insert_section_header(self.tr('Input Config'), vbox)
         hbox = QtGui.QHBoxLayout()
-        btm = QtGui.QPushButton('Import Mesh')
+        btm = QtGui.QPushButton(self.tr('Import Mesh'))
         btm.setFixedSize(100, 30)
         btm.clicked.connect(self.import_mesh)
         hbox.addWidget(btm)
@@ -118,17 +118,17 @@ class MeshConfFrame(ConfFrame):
         hbox.addWidget(self.import_dir)
         vbox.addLayout(hbox)
         # row
-        insert_section_header('Mesh Quality', vbox)
+        insert_section_header(self.tr('Mesh Quality'), vbox)
         hbox = QtGui.QHBoxLayout()
-        btm  = QtGui.QPushButton('Check Quality')
+        btm  = QtGui.QPushButton(self.tr('Check Quality'))
         hbox.addWidget(btm)
-        btm  = QtGui.QPushButton('Quality Report')
+        btm  = QtGui.QPushButton(self.tr('Quality Report'))
         hbox.addWidget(btm)
         vbox.addLayout(hbox)
         # row
-        insert_section_header('Mesh Unit', vbox)
+        insert_section_header(self.tr('Mesh Unit'), vbox)
         hbox = QtGui.QHBoxLayout()
-        la = QtGui.QLabel('Mesh Size:')
+        la = QtGui.QLabel(self.tr('Mesh Size:'))
         la.setFixedSize(100, 50)
         hbox.addWidget(la)
         self.mesh_size_label = QtGui.QLabel('(Xmin, Ymin, Zmin)\n(Xmax, Ymax, Zmax)')
@@ -137,12 +137,12 @@ class MeshConfFrame(ConfFrame):
         hbox.addWidget(self.mesh_size_label)
         vbox.addLayout(hbox)
         hbox = QtGui.QHBoxLayout()
-        hbox.addWidget(QtGui.QLabel('Original\nMesh Unit'))
+        hbox.addWidget(QtGui.QLabel(self.tr('Original\nMesh Unit')))
         combo_box = QtGui.QComboBox()
         combo_box.addItem('m')
         combo_box.addItem('mm')
         combo_box.addItem('cm')
-        combo_box.addItem('Scale ratio')
+        combo_box.addItem(self.tr('Scale ratio'))
         combo_box.currentIndexChanged.connect(self.did_change_scale_mode)
         hbox.addWidget(combo_box)
         self.input_text_edit = QtGui.QTextEdit()
@@ -156,11 +156,11 @@ class MeshConfFrame(ConfFrame):
         self.setLayout(vbox)
 
     def import_mesh(self):
-        filename = QtGui.QFileDialog.getOpenFileName(self, 'import cgns mesh', '/home')
+        filename = QtGui.QFileDialog.getOpenFileName(self, self.tr('import cgns mesh'), '/home')
         if filename == '':
             return
         filename = './moxing1.cgns'
-        uti.signal_center.log_signal.emit('loading mesh %s' % filename)
+        uti.signal_center.log_signal.emit('loading mesh %s'% filename)
         self.did_set_mesh_input_dir(filename)
         self.vtk_processor.vtk_ren.RemoveAllViewProps()
         task = vtk_proc.LoadCgnsTask(self.vtk_processor, filename)
@@ -197,31 +197,31 @@ class SolverConfFrame(ConfFrame):
         }
         vbox = QtGui.QVBoxLayout()
         #row
-        insert_section_header('Solver Config', vbox)
+        insert_section_header(self.tr('Solver Config'), vbox)
         hbox = QtGui.QHBoxLayout()
         frame_in = QtGui.QFrame()
         frame_in.setFrameStyle(QtGui.QFrame.Sunken | QtGui.QFrame.Box)
         vbox_in = QtGui.QVBoxLayout()
-        vbox_in.addWidget(QtGui.QLabel('Solver Type:'))
-        self.pressure_based_button = QtGui.QRadioButton('Pressure Based')
+        vbox_in.addWidget(QtGui.QLabel(self.tr('Solver Type:')))
+        self.pressure_based_button = QtGui.QRadioButton(self.tr('Pressure Based'))
         vbox_in.addWidget(self.pressure_based_button)
-        self.density_based_button = QtGui.QRadioButton('Density Based')
+        self.density_based_button = QtGui.QRadioButton(self.tr('Density Based'))
         vbox_in.addWidget(self.density_based_button)
         frame_in.setLayout(vbox_in)
         hbox.addWidget(frame_in)
         frame_in = QtGui.QFrame()
         frame_in.setFrameStyle(QtGui.QFrame.Sunken | QtGui.QFrame.Box)
         vbox_in = QtGui.QVBoxLayout()
-        vbox_in.addWidget(QtGui.QLabel('Time'))
-        self.transient_based_button = QtGui.QRadioButton('Transient')
+        vbox_in.addWidget(QtGui.QLabel(self.tr('Time')))
+        self.transient_based_button = QtGui.QRadioButton(self.tr('Transient'))
         vbox_in.addWidget(self.transient_based_button)
-        self.steaady_based_button = QtGui.QRadioButton('Steady')
+        self.steaady_based_button = QtGui.QRadioButton(self.tr('Steady'))
         vbox_in.addWidget(self.steaady_based_button)
         frame_in.setLayout(vbox_in)
         hbox.addWidget(frame_in)
         vbox.addLayout(hbox)
         #row
-        insert_section_header('Gravity Vector', vbox)
+        insert_section_header(self.tr('Gravity Vector'), vbox)
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(QtGui.QLabel('Gx, Gy, Gz ='))
         #te = QtGui.QTextEdit(self)
@@ -230,17 +230,17 @@ class SolverConfFrame(ConfFrame):
         hbox.addWidget(te)
         vbox.addLayout(hbox)
         # row
-        insert_section_header('Model Selection',vbox)
+        insert_section_header(self.tr('Model Selection'),vbox)
         self.tree = QtGui.QTreeWidget(self)
         self.tree.setMouseTracking(True)
         self.tree.setColumnCount(2)
         self.tree.setColumnWidth(0, 150)
-        self.tree.setHeaderLabels(['Models', 'Description'])
+        self.tree.setHeaderLabels([self.tr('Models'), self.tr('Description')])
         vbox.addWidget(self.tree)
         self.update_tree()
         # row
         hbox = QtGui.QHBoxLayout()
-        btm = QtGui.QPushButton('Edit')
+        btm = QtGui.QPushButton(self.tr('Edit'))
         btm.clicked.connect(self.show_model_config_dialog)
         hbox.addWidget(btm)
         vbox.addLayout(hbox)
@@ -313,7 +313,6 @@ class SolverConfFrame(ConfFrame):
                 self.models[model_name]['enabled'] = False
             uti.signal_center.log_signal.emit('model deactivated %s' % model_name)
 
-        print self.models[model_name]
         self.tree.itemChanged.disconnect() # stop event handel
         self.update_tree()
         self.tree.itemChanged.connect(self.item_changed_slot)
@@ -343,7 +342,7 @@ class PartsTreeFrame(ConfFrame):
         self.root_bpart_item = it2
 
         # Lower Switch box
-        label = QtGui.QLabel("Set Boundary Type")
+        label = QtGui.QLabel(self.tr('Set Boundary Type'))
         label.setFixedSize(200, 20)
         vbox.addWidget(label)
 
@@ -354,14 +353,14 @@ class PartsTreeFrame(ConfFrame):
         combo_box.setFixedSize(180, 28)
         combo_box.setEnabled(False)
         hbox.addWidget(combo_box)
-        edit_button = QtGui.QPushButton("Edit")
+        edit_button = QtGui.QPushButton(self.tr("Edit"))
         self.edit_btm = edit_button
-        combo_box.addItem('Boundary Type')
-        combo_box.addItem('Wall') # --0
-        combo_box.addItem('Inlet')# --1
-        combo_box.addItem('Outlet')# --2
-        combo_box.addItem('Symmetric') # --3
-        combo_box.addItem('Periodic') # --4
+        combo_box.addItem(self.tr('Boundary Type'))
+        combo_box.addItem(self.tr('Wall')) # --0
+        combo_box.addItem(self.tr('Inlet'))# --1
+        combo_box.addItem(self.tr('Outlet'))# --2
+        combo_box.addItem(self.tr('Symmetric')) # --3
+        combo_box.addItem(self.tr('Periodic')) # --4
         hbox.addWidget(edit_button)
 
         tree_widget.itemChanged.connect(self.item_changed_slot)
@@ -443,19 +442,19 @@ class PartsTreeFrame(ConfFrame):
             self.edit_btm.setEnabled(True)
             if idx == 1:
                 self.vtk_processor.set_part_color(part_name, (0.0, 0.0, 1.0))
-                item.setText(1, 'WALL')
+                item.setText(1, self.tr('WALL'))
             elif idx == 2:
                 self.vtk_processor.set_part_color(part_name, (0.0, 1.1, 0.0))
-                item.setText(1, 'INLET')
+                item.setText(1, self.tr('INLET'))
             elif idx == 3:
                 self.vtk_processor.set_part_color(part_name, (1., 0., 0.))
-                item.setText(1, 'OUTLET')
+                item.setText(1, self.tr('OUTLET'))
             elif idx == 4:
                 self.vtk_processor.set_part_color(part_name, (1., 1., 0.))
-                item.setText(1, 'SYMMETRY')
+                item.setText(1, self.tr('SYMMETRY'))
             elif idx == 5:
                 self.vtk_processor.set_part_color(part_name, (0., 1., 1.))
-                item.setText(1, 'PERIODIC')
+                item.setText(1, self.tr('PERIODIC'))
 
     # push bottom
     @QtCore.pyqtSlot()
@@ -466,11 +465,11 @@ class PartsTreeFrame(ConfFrame):
         bc_type = part_info['type']
         bc_dialog = None
         if bc_type == 1:
-            bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary', slipwall=part_info.get('slip wall'))
+            bc_dialog = dia.BCDialog(bc_type, self, title=self.tr('Set Inlet Boundary'), slipwall=part_info.get('slip wall'))
         elif bc_type == 2:
-            bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary', init=part_info.get('inlet vec'))
+            bc_dialog = dia.BCDialog(bc_type, self, title=self.tr('Set Inlet Boundary'), init=part_info.get('inlet vec'))
         else:
-            bc_dialog = dia.BCDialog(bc_type, self, title='Set Inlet Boundary')
+            bc_dialog = dia.BCDialog(bc_type, self, title=self.tr('Set Inlet Boundary'))
         bc_dialog.did_set_signal.connect(self.did_finish_dialog)
         bc_dialog.exec_() # blocking call
 
@@ -520,7 +519,7 @@ class OutputConfFrame(ConfFrame):
 
     def line_factory(self):
         ret = QtGui.QHBoxLayout()
-        content = QtGui.QLabel('ouput configure...')
+        content = QtGui.QLabel(self.tr('ouput configure...'))
         content.setFixedSize(200, 30)
         ret.addWidget(content)
         return ret

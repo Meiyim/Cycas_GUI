@@ -1,3 +1,5 @@
+# -*- coding:utf-8 -*-
+
 import sys
 import os
 from PyQt4 import QtGui
@@ -17,7 +19,6 @@ class MainWindow(QtGui.QMainWindow):
         # insert properties
         self.dock_left = None
         self.dock_bottom = None
-        self.action_dict = {}
         self.left_dock_panels = {}
         self.progress_bar = None
         self.log_widget = None
@@ -74,22 +75,22 @@ class MainWindow(QtGui.QMainWindow):
 
         # actions
         exit_action = self.new_action('Exit', 'triggered()', QtCore.SLOT('close()'),
-                                      icon='icons/exit', short_cut='Ctrl+Q', tip='Exit app')
+                                      icon='icons/exit', short_cut='Ctrl+Q', tip=self.tr('Exit app'))
         import_mesh_action = self.new_action('Import Mesh', 'triggered()', self.left_dock_panels['Mesh'].import_mesh,
-                                             icon='icons/exit.png', short_cut='Ctrl+E', tip='Import CGNS Mesh')
+                                             icon='icons/exit.png', short_cut='Ctrl+E', tip=self.tr('Import CGNS Mesh'))
         fit_window_action = self.new_action('Fit Window', 'triggered()', self.vtk_processor.fit_slot,
-                                            short_cut = 'Ctrl+F', tip = 'resize the VTK window')
+                                            short_cut = 'Ctrl+F', tip = self.tr('resize the VTK window'))
 
-        self.new_action('Mesh', 'triggered()', self.show_panel,
-                        tip='mesh configuration')
-        self.new_action('Output', 'triggered()', self.show_panel,
-                         icon='icons/output_config.png', tip = 'configure output directory')
-        self.new_action('Solver', 'triggered()', self.show_panel,
-                         tip = 'solver configuration')
-        self.new_action('Material', 'triggered()', self.show_panel,
-                         tip = 'material configuration')
-        self.new_action('Boundary', 'triggered()', self.show_panel,
-                        tip='boundary configuration')
+        mesh_action = self.new_action('Mesh', 'triggered()', self.show_panel,
+                        tip='mesh configuration', displayname=self.tr('Mesh'))
+        output_action =  self.new_action('Output', 'triggered()', self.show_panel, displayname=self.tr('Output'),
+                         icon='icons/output_config.png', tip = self.tr('configure output directory'))
+        solver_action = self.new_action('Solver', 'triggered()', self.show_panel, displayname=self.tr('Solver'),
+                         tip = self.tr('solver configuration'))
+        material_action = self.new_action('Material', 'triggered()', self.show_panel, displayname=self.tr('Material'),
+                         tip = self.tr('material configuration'))
+        boundary_action = self.new_action('Boundary', 'triggered()', self.show_panel, displayname=self.tr('Boundary'),
+                        tip=self.tr('boundary configuration'))
 
         # status bar and progress bar
         statbar = self.statusBar()
@@ -107,11 +108,12 @@ class MainWindow(QtGui.QMainWindow):
         view_menu = menubar.addMenu('&View')
         view_menu.addAction(fit_window_action)
         # tool bar
-        self.addToolBar('Mesh Config').addAction(self.action_dict['Mesh'])
-        self.addToolBar('Solver Config').addAction(self.action_dict['Solver'])
-        self.addToolBar('Material Config').addAction(self.action_dict['Material'])
-        self.addToolBar('Boundary Config').addAction(self.action_dict['Boundary'])
-        self.addToolBar('Output Config').addAction(self.action_dict['Output'])
+        tool_bar = self.addToolBar(self.tr('Panel Selection'))
+        tool_bar.addAction(mesh_action)
+        tool_bar.addAction(solver_action)
+        tool_bar.addAction(material_action)
+        tool_bar.addAction(boundary_action)
+        tool_bar.addAction(output_action)
 
         # test work
         self.cycas = dock_frame.CycasTracker()
@@ -126,8 +128,9 @@ class MainWindow(QtGui.QMainWindow):
             action.setShortcut(kwargs['short_cut'])
         if kwargs.get('tip') is not None:
             action.setStatusTip(kwargs['tip'])
+        if kwargs.get('displayname') is not None:
+            action.info = kwargs['displayname']
         self.connect(action, QtCore.SIGNAL(signal), slot_func)
-        self.action_dict[title] = action
         return action
 
     # override
@@ -137,8 +140,8 @@ class MainWindow(QtGui.QMainWindow):
 
     # override
     def closeEvent(self, event):
-        reply = QtGui.QMessageBox.question(self, 'Message',
-                                           "Are you sure to quit?", QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+        reply = QtGui.QMessageBox.question(self, self.tr('Message'),
+                                           self.tr("Are you sure to quit?"), QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
         if reply == QtGui.QMessageBox.Yes:
             event.accept()
         else:
@@ -169,13 +172,17 @@ class MainWindow(QtGui.QMainWindow):
     @QtCore.pyqtSlot()
     def show_panel(self):
         key = str(self.sender().text())
-        self.dock_left.setWindowTitle(key + ' Panel')
+        name = self.sender().info
+        self.dock_left.setWindowTitle(name + self.tr(' Panel'))
         panel = self.left_dock_panels[key]
         if self.dock_left.widget is not panel:
             self.dock_left.setWidget(panel)
 
 
 app = QtGui.QApplication(sys.argv)
+translator = QtCore.QTranslator()
+translator.load('./cycas_gui_chinese.qm')
+app.installTranslator(translator)
 app.setApplicationName('Cycas-GUI')
 main = MainWindow()
 main.show()
